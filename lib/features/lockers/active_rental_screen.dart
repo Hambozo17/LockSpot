@@ -26,7 +26,13 @@ class _ActiveRentalScreenState extends State<ActiveRentalScreen> {
   }
 
   Future<void> _loadBookings() async {
-    if (_auth.currentUser == null) return;
+    if (_auth.currentUser == null) {
+      setState(() {
+        _isLoading = false;
+        _bookings = [];
+      });
+      return;
+    }
 
     setState(() {
       _isLoading = true;

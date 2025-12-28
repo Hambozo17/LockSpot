@@ -1,23 +1,41 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// API Service for connecting to the LockSpot Backend
 /// Replaces Firebase with REST API calls
 class ApiService {
-  // Change this to your Render deployment URL
-  static const String baseUrl = 'http://localhost:8000';
-  // static const String baseUrl = 'https://your-app.onrender.com';
+  // Ngrok URL for development - update this when ngrok restarts
+  static const String baseUrl = 'https://hydrogenous-mittie-loopily.ngrok-free.dev/api';
+  // Local development: 'http://localhost:8000/api'
+  // Production: 'https://your-production-server.com/api'
 
   String? _authToken;
+  bool _isDemoMode = false;
 
   // Singleton pattern
   static final ApiService _instance = ApiService._internal();
   factory ApiService() => _instance;
   ApiService._internal();
 
+  /// Check if in demo mode
+  Future<bool> checkDemoMode() async {
+    final prefs = await SharedPreferences.getInstance();
+    _isDemoMode = prefs.getBool('is_demo_mode') ?? false;
+    return _isDemoMode;
+  }
+
+  /// Set demo mode
+  void setDemoMode(bool value) {
+    _isDemoMode = value;
+  }
+
   /// Set the auth token after login
   void setAuthToken(String token) {
     _authToken = token;
+    if (token == 'demo_token') {
+      _isDemoMode = true;
+    }
   }
 
   /// Clear auth token on logout
@@ -30,11 +48,21 @@ class ApiService {
     final headers = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
+      // Required for ngrok free tier to skip browser warning
+      'ngrok-skip-browser-warning': 'true',
     };
     if (requireAuth && _authToken != null) {
       headers['Authorization'] = 'Bearer $_authToken';
     }
     return headers;
+  }
+
+  /// Ensure endpoint has trailing slash for Django
+  String _normalizeEndpoint(String endpoint) {
+    if (!endpoint.endsWith('/') && !endpoint.contains('?')) {
+      return '$endpoint/';
+    }
+    return endpoint;
   }
 
   /// Generic HTTP request handler
@@ -45,6 +73,8 @@ class ApiService {
     Map<String, String>? queryParams,
     bool requireAuth = true,
   }) async {
+    // Normalize endpoint with trailing slash
+    endpoint = _normalizeEndpoint(endpoint);
     Uri uri = Uri.parse('$baseUrl$endpoint');
     if (queryParams != null) {
       uri = uri.replace(queryParameters: queryParams);
@@ -79,12 +109,17 @@ class ApiService {
     }
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
-      return jsonDecode(response.body);
+      final decoded = jsonDecode(response.body);
+      // Handle both List and Map responses from DRF
+      if (decoded is List) {
+        return {'results': decoded};
+      }
+      return decoded;
     } else {
       final error = jsonDecode(response.body);
       throw ApiException(
         statusCode: response.statusCode,
-        message: error['detail'] ?? 'An error occurred',
+        message: error['detail'] ?? error['error'] ?? 'An error occurred',
       );
     }
   }
@@ -137,6 +172,18 @@ class ApiService {
 
   /// Get current user profile
   Future<User> getCurrentUser() async {
+    if (_isDemoMode) {
+      return User(
+        userId: 999,
+        firstName: 'Demo',
+        lastName: 'User',
+        email: 'demo@lockspot.com',
+        phone: '+966500000000',
+        userType: 'customer',
+        isVerified: true,
+      );
+    }
+
     final response = await _request('GET', '/auth/me');
     return User.fromJson(response);
   }
@@ -144,7 +191,12 @@ class ApiService {
   // ==================== LOCATIONS ====================
 
   /// Get all locker locations
-  Future<List<Location>> getLocations({String? city}) async {
+  Future<List<LockerLocation>> getLocations({String? city}) async {
+    // Return mock data in demo mode
+    if (_isDemoMode) {
+      return _getMockLocations();
+    }
+
     final queryParams = <String, String>{};
     if (city != null) queryParams['city'] = city;
 
@@ -154,29 +206,98 @@ class ApiService {
       queryParams: queryParams,
       requireAuth: false,
     );
-    return (response['locations'] as List)
-        .map((l) => Location.fromJson(l))
+    return (response['results'] as List)
+        .map((l) => LockerLocation.fromJson(l))
         .toList();
   }
 
+  /// Mock locations for demo mode
+  List<LockerLocation> _getMockLocations() {
+    return [
+      Location(
+        locationId: 1,
+        name: 'Riyadh Mall',
+        description: 'Premium locker location at Riyadh Mall',
+        availableLockers: 32,
+        totalLockers: 50,
+        operatingHoursStart: '08:00',
+        operatingHoursEnd: '22:00',
+        address: LocationAddress(
+          addressId: 1,
+          streetAddress: 'King Fahd Road',
+          city: 'Riyadh',
+          country: 'Saudi Arabia',
+          latitude: 24.7136,
+          longitude: 46.6753,
+        ),
+      ),
+      Location(
+        locationId: 2,
+        name: 'Jeddah Central Station',
+        description: '24/7 locker access at the station',
+        availableLockers: 25,
+        totalLockers: 40,
+        operatingHoursStart: '00:00',
+        operatingHoursEnd: '23:59',
+        address: LocationAddress(
+          addressId: 2,
+          streetAddress: 'Al Madinah Road',
+          city: 'Jeddah',
+          country: 'Saudi Arabia',
+          latitude: 21.5433,
+          longitude: 39.1728,
+        ),
+      ),
+      Location(
+        locationId: 3,
+        name: 'KAFD Tower',
+        description: 'Business district premium lockers',
+        availableLockers: 18,
+        totalLockers: 30,
+        operatingHoursStart: '07:00',
+        operatingHoursEnd: '23:00',
+        address: LocationAddress(
+          addressId: 3,
+          streetAddress: 'King Abdullah Financial District',
+          city: 'Riyadh',
+          country: 'Saudi Arabia',
+          latitude: 24.7648,
+          longitude: 46.6426,
+        ),
+      ),
+    ];
+  }
+
   /// Get location by ID
-  Future<Location> getLocationById(int locationId) async {
+  Future<LockerLocation> getLocationById(int locationId) async {
+    if (_isDemoMode) {
+      return _getMockLocations().firstWhere((l) => l.locationId == locationId);
+    }
+
     final response = await _request(
       'GET',
       '/locations/$locationId',
       requireAuth: false,
     );
-    return Location.fromJson(response);
+    return LockerLocation.fromJson(response);
   }
 
   /// Get pricing for a location
   Future<List<PricingTier>> getLocationPricing(int locationId) async {
+    if (_isDemoMode) {
+      return [
+        PricingTier(tierId: 1, name: 'Small Locker', size: 'Small', basePrice: 10.0, hourlyRate: 5.0, dailyRate: 30.0),
+        PricingTier(tierId: 2, name: 'Medium Locker', size: 'Medium', basePrice: 15.0, hourlyRate: 8.0, dailyRate: 50.0),
+        PricingTier(tierId: 3, name: 'Large Locker', size: 'Large', basePrice: 20.0, hourlyRate: 12.0, dailyRate: 75.0),
+      ];
+    }
+
     final response = await _request(
       'GET',
       '/locations/$locationId/pricing',
       requireAuth: false,
     );
-    return (response['pricing_tiers'] as List)
+    return (response['results'] as List)
         .map((p) => PricingTier.fromJson(p))
         .toList();
   }
@@ -190,19 +311,44 @@ class ApiService {
     DateTime? startTime,
     DateTime? endTime,
   }) async {
+    if (_isDemoMode) {
+      return _getMockLockers(locationId: locationId);
+    }
+
     final queryParams = <String, String>{};
     if (locationId != null) queryParams['location_id'] = locationId.toString();
     if (size != null) queryParams['size'] = size;
     if (startTime != null) queryParams['start_time'] = startTime.toIso8601String();
     if (endTime != null) queryParams['end_time'] = endTime.toIso8601String();
 
-    final response = await _request(
-      'GET',
-      '/lockers/available',
-      queryParams: queryParams,
-      requireAuth: false,
-    );
-    return (response as List).map((l) => Locker.fromJson(l)).toList();
+    try {
+      final response = await _request(
+        'GET',
+        '/lockers/available',
+        queryParams: queryParams,
+        requireAuth: false,
+      );
+      return (response['results'] as List).map((l) => Locker.fromJson(l)).toList();
+    } catch (e) {
+      // Return mock data on error for demo purposes
+      return _getMockLockers(locationId: locationId);
+    }
+  }
+
+  /// Mock lockers for demo mode
+  List<Locker> _getMockLockers({int? locationId}) {
+    final allLockers = [
+      Locker(lockerId: 1, locationId: 1, locationName: 'Riyadh Mall', unitNumber: 'A-01', size: 'Small', status: 'available', hourlyRate: 5.0, dailyRate: 30.0),
+      Locker(lockerId: 2, locationId: 1, locationName: 'Riyadh Mall', unitNumber: 'A-02', size: 'Medium', status: 'available', hourlyRate: 8.0, dailyRate: 50.0),
+      Locker(lockerId: 3, locationId: 1, locationName: 'Riyadh Mall', unitNumber: 'A-03', size: 'Large', status: 'available', hourlyRate: 12.0, dailyRate: 75.0),
+      Locker(lockerId: 4, locationId: 2, locationName: 'Jeddah Central', unitNumber: 'B-01', size: 'Small', status: 'available', hourlyRate: 5.0, dailyRate: 30.0),
+      Locker(lockerId: 5, locationId: 2, locationName: 'Jeddah Central', unitNumber: 'B-02', size: 'Large', status: 'available', hourlyRate: 12.0, dailyRate: 75.0),
+      Locker(lockerId: 6, locationId: 3, locationName: 'KAFD Tower', unitNumber: 'C-01', size: 'Medium', status: 'available', hourlyRate: 10.0, dailyRate: 60.0),
+    ];
+    if (locationId != null) {
+      return allLockers.where((l) => l.locationId == locationId).toList();
+    }
+    return allLockers;
   }
 
   /// Check locker availability for time slot
@@ -211,6 +357,10 @@ class ApiService {
     DateTime startTime,
     DateTime endTime,
   ) async {
+    if (_isDemoMode) {
+      return {'available': true, 'message': 'Locker is available'};
+    }
+
     return await _request(
       'GET',
       '/lockers/$lockerId/availability',
@@ -232,6 +382,25 @@ class ApiService {
     String bookingType = 'Storage',
     String? discountCode,
   }) async {
+    if (_isDemoMode) {
+      return Booking(
+        bookingId: DateTime.now().millisecondsSinceEpoch,
+        userId: 999,
+        lockerId: lockerId,
+        locationName: 'Demo Location',
+        unitNumber: 'DEMO-01',
+        size: 'Medium',
+        startTime: startTime,
+        endTime: endTime,
+        bookingType: bookingType,
+        subtotalAmount: 50.0,
+        discountAmount: 0.0,
+        totalAmount: 50.0,
+        status: 'active',
+        qrCode: 'DEMO-QR-${DateTime.now().millisecondsSinceEpoch}',
+      );
+    }
+
     final response = await _request(
       'POST',
       '/bookings',
@@ -248,17 +417,70 @@ class ApiService {
 
   /// Get user's bookings
   Future<List<Booking>> getUserBookings({String? status}) async {
+    if (_isDemoMode) {
+      return _getMockBookings();
+    }
+
+    // Return empty list if not authenticated to avoid 403
+    if (_authToken == null) {
+      return [];
+    }
+
     final queryParams = <String, String>{};
     if (status != null) queryParams['status'] = status;
 
-    final response = await _request(
-      'GET',
-      '/bookings',
-      queryParams: queryParams,
-    );
-    return (response['bookings'] as List)
-        .map((b) => Booking.fromJson(b))
-        .toList();
+    try {
+      final response = await _request(
+        'GET',
+        '/bookings',
+        queryParams: queryParams,
+      );
+      return (response['results'] as List)
+          .map((b) => Booking.fromJson(b))
+          .toList();
+    } catch (e) {
+      // Return empty list on error (like 403) instead of throwing
+      return [];
+    }
+  }
+
+  /// Mock bookings for demo mode
+  List<Booking> _getMockBookings() {
+    return [
+      Booking(
+        bookingId: 1001,
+        userId: 999,
+        lockerId: 1,
+        locationName: 'Riyadh Mall',
+        unitNumber: 'A-01',
+        size: 'Small',
+        startTime: DateTime.now().subtract(const Duration(hours: 2)),
+        endTime: DateTime.now().add(const Duration(hours: 4)),
+        bookingType: 'Storage',
+        subtotalAmount: 30.0,
+        discountAmount: 0.0,
+        totalAmount: 30.0,
+        status: 'active',
+        qrCode: 'DEMO-QR-1001',
+        paymentStatus: 'paid',
+      ),
+      Booking(
+        bookingId: 1002,
+        userId: 999,
+        lockerId: 2,
+        locationName: 'Jeddah Central',
+        unitNumber: 'B-02',
+        size: 'Large',
+        startTime: DateTime.now().subtract(const Duration(days: 2)),
+        endTime: DateTime.now().subtract(const Duration(days: 1)),
+        bookingType: 'Storage',
+        subtotalAmount: 75.0,
+        discountAmount: 10.0,
+        totalAmount: 65.0,
+        status: 'completed',
+        paymentStatus: 'paid',
+      ),
+    ];
   }
 
   /// Alias for getUserBookings (for backwards compatibility)
@@ -266,18 +488,39 @@ class ApiService {
 
   /// Get booking by ID
   Future<Booking> getBookingById(int bookingId) async {
+    if (_isDemoMode) {
+      return _getMockBookings().firstWhere(
+        (b) => b.bookingId == bookingId,
+        orElse: () => _getMockBookings().first,
+      );
+    }
+
     final response = await _request('GET', '/bookings/$bookingId');
     return Booking.fromJson(response);
   }
 
   /// Generate QR code for booking
   Future<QRCode> generateBookingQR(int bookingId) async {
+    if (_isDemoMode) {
+      return QRCode(
+        qrId: 1,
+        bookingId: bookingId,
+        code: 'DEMO-UNLOCK-$bookingId',
+        codeType: 'unlock',
+        expiresAt: DateTime.now().add(const Duration(hours: 6)),
+      );
+    }
+
     final response = await _request('GET', '/bookings/$bookingId/qr');
     return QRCode.fromJson(response);
   }
 
   /// Cancel a booking
   Future<Map<String, dynamic>> cancelBooking(int bookingId, {String? reason}) async {
+    if (_isDemoMode) {
+      return {'success': true, 'message': 'Booking cancelled successfully'};
+    }
+
     return await _request(
       'POST',
       '/bookings/$bookingId/cancel',
@@ -419,12 +662,12 @@ class User {
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
-      userId: json['user_id'],
-      firstName: json['first_name'],
-      lastName: json['last_name'],
-      email: json['email'],
-      phone: json['phone'],
-      userType: json['user_type'],
+      userId: json['user_id'] ?? json['id'] ?? 0,
+      firstName: json['first_name'] ?? '',
+      lastName: json['last_name'] ?? '',
+      email: json['email'] ?? '',
+      phone: json['phone'] ?? '',
+      userType: json['user_type'] ?? 'customer',
       isVerified: json['is_verified'] ?? false,
     );
   }
@@ -463,12 +706,12 @@ class Location {
 
   factory Location.fromJson(Map<String, dynamic> json) {
     return Location(
-      locationId: json['location_id'],
-      name: json['name'],
+      locationId: json['location_id'] ?? json['id'] ?? 0,
+      name: json['name'] ?? 'Unknown Location',
       description: json['description'],
-      imageUrl: json['image_url'],
-      operatingHoursStart: json['operating_hours_start'],
-      operatingHoursEnd: json['operating_hours_end'],
+      imageUrl: json['image_url'] ?? json['image'],
+      operatingHoursStart: json['operating_hours_start']?.toString(),
+      operatingHoursEnd: json['operating_hours_end']?.toString(),
       isActive: json['is_active'] ?? true,
       address: json['address'] != null
           ? LocationAddress.fromJson(json['address'])
@@ -505,15 +748,23 @@ class LocationAddress {
   });
 
   factory LocationAddress.fromJson(Map<String, dynamic> json) {
+    // Handle latitude/longitude which can be string or number from Django
+    double? parseLat = json['latitude'] != null 
+        ? (json['latitude'] is String ? double.tryParse(json['latitude']) : json['latitude']?.toDouble())
+        : null;
+    double? parseLng = json['longitude'] != null 
+        ? (json['longitude'] is String ? double.tryParse(json['longitude']) : json['longitude']?.toDouble())
+        : null;
+    
     return LocationAddress(
-      addressId: json['address_id'],
-      streetAddress: json['street_address'],
-      city: json['city'],
+      addressId: json['address_id'] ?? json['id'] ?? 0,
+      streetAddress: json['street_address'] ?? '',
+      city: json['city'] ?? 'Unknown',
       state: json['state'],
       zipCode: json['zip_code'],
-      country: json['country'] ?? 'Egypt',
-      latitude: json['latitude']?.toDouble(),
-      longitude: json['longitude']?.toDouble(),
+      country: json['country'] ?? 'Saudi Arabia',
+      latitude: parseLat,
+      longitude: parseLng,
     );
   }
 }
@@ -543,9 +794,9 @@ class PricingTier {
 
   factory PricingTier.fromJson(Map<String, dynamic> json) {
     return PricingTier(
-      tierId: json['tier_id'],
-      name: json['name'],
-      size: json['size'],
+      tierId: json['tier_id'] ?? json['id'] ?? 0,
+      name: json['name'] ?? 'Standard',
+      size: json['size'] ?? 'Medium',
       basePrice: (json['base_price'] ?? 0).toDouble(),
       hourlyRate: (json['hourly_rate'] ?? 0).toDouble(),
       dailyRate: (json['daily_rate'] ?? 0).toDouble(),
@@ -579,12 +830,12 @@ class Locker {
 
   factory Locker.fromJson(Map<String, dynamic> json) {
     return Locker(
-      lockerId: json['locker_id'],
-      locationId: json['location_id'],
+      lockerId: json['locker_id'] ?? json['id'] ?? 0,
+      locationId: json['location_id'] ?? json['location'] ?? 0,
       locationName: json['location_name'],
-      unitNumber: json['unit_number'],
-      size: json['size'],
-      status: json['status'],
+      unitNumber: json['unit_number'] ?? '',
+      size: json['size'] ?? 'Medium',
+      status: json['status'] ?? 'Available',
       hourlyRate: (json['hourly_rate'] ?? 0).toDouble(),
       dailyRate: (json['daily_rate'] ?? 0).toDouble(),
     );
@@ -633,19 +884,23 @@ class Booking {
 
   factory Booking.fromJson(Map<String, dynamic> json) {
     return Booking(
-      bookingId: json['booking_id'],
-      userId: json['user_id'],
-      lockerId: json['locker_id'],
+      bookingId: json['booking_id'] ?? json['id'] ?? 0,
+      userId: json['user_id'] ?? 0,
+      lockerId: json['locker_id'] ?? json['locker'] ?? 0,
       locationName: json['location_name'],
       unitNumber: json['unit_number'],
       size: json['size'],
-      startTime: DateTime.parse(json['start_time']),
-      endTime: DateTime.parse(json['end_time']),
-      bookingType: json['booking_type'],
+      startTime: json['start_time'] != null 
+          ? DateTime.parse(json['start_time']) 
+          : DateTime.now(),
+      endTime: json['end_time'] != null 
+          ? DateTime.parse(json['end_time']) 
+          : DateTime.now().add(const Duration(hours: 1)),
+      bookingType: json['booking_type'] ?? 'Storage',
       subtotalAmount: (json['subtotal_amount'] ?? 0).toDouble(),
       discountAmount: (json['discount_amount'] ?? 0).toDouble(),
       totalAmount: (json['total_amount'] ?? 0).toDouble(),
-      status: json['status'],
+      status: json['status'] ?? 'Pending',
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'])
           : null,
@@ -674,10 +929,10 @@ class Payment {
 
   factory Payment.fromJson(Map<String, dynamic> json) {
     return Payment(
-      paymentId: json['payment_id'],
-      bookingId: json['booking_id'],
+      paymentId: json['payment_id'] ?? json['id'] ?? 0,
+      bookingId: json['booking_id'] ?? json['booking'] ?? 0,
       amount: (json['amount'] ?? 0).toDouble(),
-      status: json['status'],
+      status: json['status'] ?? 'Pending',
       paymentDate: json['payment_date'] != null
           ? DateTime.parse(json['payment_date'])
           : null,
@@ -705,11 +960,13 @@ class QRCode {
 
   factory QRCode.fromJson(Map<String, dynamic> json) {
     return QRCode(
-      qrId: json['qr_id'],
-      bookingId: json['booking_id'],
-      code: json['code'],
-      codeType: json['code_type'],
-      expiresAt: DateTime.parse(json['expires_at']),
+      qrId: json['qr_id'] ?? json['id'] ?? 0,
+      bookingId: json['booking_id'] ?? json['booking'] ?? 0,
+      code: json['code'] ?? '',
+      codeType: json['code_type'] ?? 'access',
+      expiresAt: json['expires_at'] != null 
+          ? DateTime.parse(json['expires_at'])
+          : DateTime.now().add(const Duration(hours: 24)),
       qrImageBase64: json['qr_image_base64'],
     );
   }
@@ -738,11 +995,11 @@ class Review {
 
   factory Review.fromJson(Map<String, dynamic> json) {
     return Review(
-      reviewId: json['review_id'],
-      bookingId: json['booking_id'],
+      reviewId: json['review_id'] ?? json['id'] ?? 0,
+      bookingId: json['booking_id'] ?? json['booking'] ?? 0,
       userName: json['user_name'],
       locationName: json['location_name'],
-      rating: json['rating'],
+      rating: json['rating'] ?? 0,
       title: json['title'],
       comment: json['comment'],
       createdAt: json['created_at'] != null

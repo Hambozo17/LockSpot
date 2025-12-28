@@ -8,6 +8,26 @@
 			"isBackground": false,
 			"problemMatcher": [],
 			"group": "build"
+		},
+		{
+			"label": "Run on Phone",
+			"type": "shell",
+			"command": "flutter run -d 28061FDH300277",
+			"isBackground": true,
+			"problemMatcher": []
+		},
+		{
+			"label": "Install App",
+			"type": "shell",
+			"command": "flutter run",
+			"isBackground": false
+		},
+		{
+			"label": "Install APK",
+			"type": "shell",
+			"command": "flutter install -d 28061FDH300277",
+			"isBackground": false,
+			"problemMatcher": []
 		}
 	]
 }

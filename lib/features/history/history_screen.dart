@@ -29,7 +29,13 @@ class _HistoryScreenState extends State<HistoryScreen>
   }
 
   Future<void> _loadHistory() async {
-    if (_auth.currentUser == null) return;
+    if (_auth.currentUser == null) {
+      setState(() {
+        _isLoading = false;
+        _bookings = [];
+      });
+      return;
+    }
 
     setState(() {
       _isLoading = true;

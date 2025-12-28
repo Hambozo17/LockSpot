@@ -11,7 +11,7 @@ class DemoQRScreen extends StatelessWidget {
 
   // GitHub Release URLs
   static const String apkDownloadUrl = 'https://github.com/Hambozo17/LockSpot/releases/latest/download/app-release.apk';
-  static const String webAppUrl = 'https://hambozo17.github.io/LockSpot'; // GitHub Pages or your deployed URL
+  static const String webAppUrl = 'https://github.com/Hambozo17/LockSpot'; // GitHub repo page
   static const String playStoreUrl = 'https://play.google.com/store/apps/details?id=com.officerk.lockspot';
   static const String repoUrl = 'https://github.com/Hambozo17/LockSpot';
 
