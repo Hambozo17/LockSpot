@@ -1,0 +1,1062 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LockSpot - Smart Locker Database Project</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: #1a1a2e;
+            color: #fff;
+            overflow-x: hidden;
+        }
+        
+        .slide {
+            min-height: 100vh;
+            padding: 60px 80px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            position: relative;
+            border-bottom: 3px solid #8B4513;
+        }
+        
+        .slide::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            z-index: -1;
+        }
+        
+        /* Title Slide */
+        .title-slide {
+            text-align: center;
+            background: linear-gradient(135deg, #8B4513 0%, #A0522D 50%, #CD853F 100%);
+        }
+        
+        .title-slide::before {
+            background: linear-gradient(135deg, #8B4513 0%, #A0522D 50%, #CD853F 100%);
+        }
+        
+        .logo {
+            font-size: 120px;
+            margin-bottom: 20px;
+        }
+        
+        .project-title {
+            font-size: 64px;
+            font-weight: 800;
+            margin-bottom: 20px;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.3);
+        }
+        
+        .subtitle {
+            font-size: 28px;
+            font-weight: 300;
+            margin-bottom: 40px;
+            opacity: 0.9;
+        }
+        
+        .course-info {
+            background: rgba(255,255,255,0.15);
+            padding: 30px 50px;
+            border-radius: 20px;
+            display: inline-block;
+            backdrop-filter: blur(10px);
+        }
+        
+        .course-info p {
+            font-size: 20px;
+            margin: 10px 0;
+        }
+        
+        .course-code {
+            font-size: 24px;
+            font-weight: 600;
+            color: #FFE4B5;
+        }
+        
+        /* Section Headers */
+        .section-header {
+            font-size: 48px;
+            font-weight: 700;
+            margin-bottom: 40px;
+            color: #CD853F;
+            border-left: 5px solid #CD853F;
+            padding-left: 20px;
+        }
+        
+        /* Team Slide */
+        .team-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 30px;
+            margin-top: 30px;
+        }
+        
+        .team-card {
+            background: linear-gradient(145deg, #2a2a4a, #1e1e3a);
+            padding: 30px;
+            border-radius: 20px;
+            text-align: center;
+            border: 2px solid #8B4513;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        
+        .team-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(139, 69, 19, 0.3);
+        }
+        
+        .team-avatar {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #8B4513, #CD853F);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            font-weight: 700;
+            margin: 0 auto 15px;
+        }
+        
+        .team-name {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .team-id {
+            font-size: 14px;
+            color: #CD853F;
+            margin-bottom: 10px;
+        }
+        
+        .team-email {
+            font-size: 12px;
+            color: #aaa;
+            word-break: break-all;
+        }
+        
+        .team-phone {
+            font-size: 13px;
+            color: #888;
+            margin-top: 5px;
+        }
+        
+        /* Problem Slide */
+        .problem-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+        }
+        
+        .problem-card {
+            background: rgba(139, 69, 19, 0.2);
+            padding: 30px;
+            border-radius: 15px;
+            border-left: 4px solid #CD853F;
+        }
+        
+        .problem-card h3 {
+            font-size: 22px;
+            color: #CD853F;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .problem-card p {
+            font-size: 16px;
+            line-height: 1.6;
+            color: #ddd;
+        }
+        
+        /* Architecture Slide */
+        .architecture {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            margin-top: 40px;
+        }
+        
+        .arch-box {
+            background: linear-gradient(145deg, #2a2a4a, #1e1e3a);
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            width: 280px;
+            border: 2px solid #8B4513;
+        }
+        
+        .arch-icon {
+            font-size: 60px;
+            margin-bottom: 20px;
+        }
+        
+        .arch-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: #CD853F;
+            margin-bottom: 15px;
+        }
+        
+        .arch-tech {
+            font-size: 14px;
+            color: #aaa;
+            line-height: 1.8;
+        }
+        
+        .arch-arrow {
+            font-size: 40px;
+            color: #CD853F;
+        }
+        
+        /* Database Slide */
+        .db-stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 30px;
+            margin: 40px 0;
+        }
+        
+        .stat-card {
+            background: linear-gradient(145deg, #8B4513, #A0522D);
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 56px;
+            font-weight: 800;
+        }
+        
+        .stat-label {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        
+        .table-list {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-top: 30px;
+        }
+        
+        .table-item {
+            background: rgba(139, 69, 19, 0.3);
+            padding: 15px 20px;
+            border-radius: 10px;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .table-icon {
+            color: #CD853F;
+        }
+        
+        /* Features Slide */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 30px;
+            margin-top: 30px;
+        }
+        
+        .feature-card {
+            background: linear-gradient(145deg, #2a2a4a, #1e1e3a);
+            padding: 35px;
+            border-radius: 20px;
+            text-align: center;
+            border-bottom: 4px solid #CD853F;
+        }
+        
+        .feature-icon {
+            font-size: 50px;
+            margin-bottom: 20px;
+        }
+        
+        .feature-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #CD853F;
+            margin-bottom: 10px;
+        }
+        
+        .feature-desc {
+            font-size: 14px;
+            color: #aaa;
+            line-height: 1.6;
+        }
+        
+        /* Code Slide */
+        .code-block {
+            background: #0d0d1a;
+            border-radius: 15px;
+            padding: 30px;
+            margin: 20px 0;
+            overflow-x: auto;
+            border: 1px solid #333;
+        }
+        
+        .code-block pre {
+            font-family: 'Consolas', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #e0e0e0;
+        }
+        
+        .code-keyword { color: #569CD6; }
+        .code-string { color: #CE9178; }
+        .code-comment { color: #6A9955; }
+        .code-function { color: #DCDCAA; }
+        .code-type { color: #4EC9B0; }
+        
+        /* API Slide */
+        .api-endpoints {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin-top: 30px;
+        }
+        
+        .endpoint {
+            background: rgba(30, 30, 50, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .method {
+            padding: 8px 15px;
+            border-radius: 5px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .method.get { background: #2E7D32; }
+        .method.post { background: #1565C0; }
+        .method.put { background: #F57C00; }
+        .method.delete { background: #C62828; }
+        
+        .endpoint-path {
+            font-family: 'Consolas', monospace;
+            font-size: 14px;
+        }
+        
+        /* Screenshots Slide */
+        .screenshots {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 30px;
+            margin-top: 30px;
+        }
+        
+        .screenshot-card {
+            background: #2a2a4a;
+            border-radius: 15px;
+            overflow: hidden;
+            border: 2px solid #8B4513;
+        }
+        
+        .screenshot-placeholder {
+            height: 300px;
+            background: linear-gradient(145deg, #1a1a2e, #16213e);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 80px;
+        }
+        
+        .screenshot-label {
+            padding: 20px;
+            text-align: center;
+            font-weight: 500;
+            background: rgba(139, 69, 19, 0.3);
+        }
+        
+        /* Results Slide */
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+            margin-top: 30px;
+        }
+        
+        .result-card {
+            background: linear-gradient(145deg, #2a2a4a, #1e1e3a);
+            padding: 30px;
+            border-radius: 15px;
+            border-left: 4px solid #4CAF50;
+        }
+        
+        .result-card h3 {
+            color: #4CAF50;
+            font-size: 20px;
+            margin-bottom: 15px;
+        }
+        
+        .result-card ul {
+            list-style: none;
+        }
+        
+        .result-card li {
+            padding: 8px 0;
+            padding-left: 25px;
+            position: relative;
+            color: #ddd;
+        }
+        
+        .result-card li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: #4CAF50;
+        }
+        
+        /* Future Work Slide */
+        .future-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 25px;
+            margin-top: 30px;
+        }
+        
+        .future-card {
+            background: rgba(30, 30, 50, 0.8);
+            padding: 25px;
+            border-radius: 15px;
+            border-top: 3px solid #2196F3;
+        }
+        
+        .future-card h4 {
+            color: #2196F3;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        
+        .future-card p {
+            font-size: 13px;
+            color: #aaa;
+            line-height: 1.5;
+        }
+        
+        /* Thank You Slide */
+        .thank-you-slide {
+            text-align: center;
+            background: linear-gradient(135deg, #8B4513 0%, #A0522D 50%, #CD853F 100%);
+        }
+        
+        .thank-you-slide::before {
+            background: linear-gradient(135deg, #8B4513 0%, #A0522D 50%, #CD853F 100%);
+        }
+        
+        .thank-you-text {
+            font-size: 80px;
+            font-weight: 800;
+            margin-bottom: 40px;
+        }
+        
+        .contact-info {
+            background: rgba(255,255,255,0.15);
+            padding: 40px 60px;
+            border-radius: 20px;
+            display: inline-block;
+            backdrop-filter: blur(10px);
+        }
+        
+        .contact-info h3 {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        
+        .contact-info p {
+            font-size: 18px;
+            margin: 10px 0;
+        }
+        
+        /* Slide Numbers */
+        .slide-number {
+            position: absolute;
+            bottom: 30px;
+            right: 40px;
+            font-size: 14px;
+            color: rgba(255,255,255,0.5);
+        }
+        
+        /* Instructor Info */
+        .instructor-info {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 30px;
+            margin-top: 30px;
+        }
+        
+        .instructor-card {
+            background: rgba(139, 69, 19, 0.2);
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+        }
+        
+        .instructor-role {
+            font-size: 14px;
+            color: #CD853F;
+            margin-bottom: 10px;
+        }
+        
+        .instructor-name {
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        /* Print Styles */
+        @media print {
+            .slide {
+                page-break-after: always;
+                min-height: 100vh;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Slide 1: Title -->
+    <div class="slide title-slide">
+        <div class="logo">🔐</div>
+        <h1 class="project-title">LockSpot</h1>
+        <p class="subtitle">Smart Locker Database Project</p>
+        
+        <div class="course-info">
+            <p class="course-code">2026-ECEN424-4</p>
+            <p><strong>Course:</strong> Introduction to Databases Systems</p>
+            <p><strong>Professor:</strong> Abdullah Mohamed Ahmed Saad</p>
+            <p><strong>TA:</strong> Salma Alaa Ibrahim</p>
+            <p><strong>Team:</strong> LockSpot</p>
+        </div>
+        
+        <div class="slide-number">1 / 12</div>
+    </div>
+
+    <!-- Slide 2: Team Members -->
+    <div class="slide">
+        <h2 class="section-header">👥 Team Members</h2>
+        
+        <div class="team-grid">
+            <div class="team-card">
+                <div class="team-avatar">HA</div>
+                <div class="team-name">Hossam Aqeel</div>
+                <div class="team-id">ID: 221001590</div>
+                <div class="team-email">H.Bahaaeldeen2290@nu.edu.eg</div>
+                <div class="team-phone">+20 111 735 1716</div>
+            </div>
+            
+            <div class="team-card">
+                <div class="team-avatar">MM</div>
+                <div class="team-name">Mohamed Mohsen</div>
+                <div class="team-id">ID: 221001411</div>
+                <div class="team-email">m.mohsen2211@nu.edu.eg</div>
+                <div class="team-phone">+20 101 009 0732</div>
+            </div>
+            
+            <div class="team-card">
+                <div class="team-avatar">YY</div>
+                <div class="team-name">Yahia Yasser</div>
+                <div class="team-id">ID: 221001502</div>
+                <div class="team-email">Y.Yasser2202@nu.edu.eg</div>
+                <div class="team-phone">+20 109 705 0144</div>
+            </div>
+            
+            <div class="team-card">
+                <div class="team-avatar">FK</div>
+                <div class="team-name">Farah Khaled</div>
+                <div class="team-id">ID: 221001643</div>
+                <div class="team-email">f.khaled2243@nu.edu.eg</div>
+                <div class="team-phone">+20 112 015 1001</div>
+            </div>
+            
+            <div class="team-card">
+                <div class="team-avatar">OE</div>
+                <div class="team-name">Omar Elbahlol</div>
+                <div class="team-id">ID: 221001502</div>
+                <div class="team-email">O.Ahmed2235@nu.edu.eg</div>
+                <div class="team-phone">+20 101 518 6658</div>
+            </div>
+            
+            <div class="team-card">
+                <div class="team-avatar">YM</div>
+                <div class="team-name">Youssef Mohammed</div>
+                <div class="team-id">ID: 221000297</div>
+                <div class="team-email">Y.Mostafa2297@nu.edu.eg</div>
+                <div class="team-phone">+20 106 388 2288</div>
+            </div>
+        </div>
+        
+        <div class="slide-number">2 / 12</div>
+    </div>
+
+    <!-- Slide 3: Problem Statement -->
+    <div class="slide">
+        <h2 class="section-header">🎯 Problem Statement</h2>
+        
+        <div class="problem-grid">
+            <div class="problem-card">
+                <h3>❌ Manual Processes</h3>
+                <p>Traditional locker systems at tourist spots rely on physical keys and paper-based tracking, causing long queues and errors.</p>
+            </div>
+            
+            <div class="problem-card">
+                <h3>❌ No Real-time Availability</h3>
+                <p>Users cannot check if lockers are available before arriving, leading to wasted trips and frustration.</p>
+            </div>
+            
+            <div class="problem-card">
+                <h3>❌ Security Concerns</h3>
+                <p>Physical keys can be lost, stolen, or duplicated. No audit trail of locker access history.</p>
+            </div>
+            
+            <div class="problem-card">
+                <h3>❌ No Digital Payments</h3>
+                <p>Cash-only systems create inconvenience. No integration with modern Egyptian payment methods.</p>
+            </div>
+        </div>
+        
+        <div style="margin-top: 40px; text-align: center;">
+            <div style="background: linear-gradient(90deg, #8B4513, #CD853F); padding: 25px 50px; border-radius: 15px; display: inline-block;">
+                <h3 style="font-size: 24px;">💡 Our Solution: LockSpot</h3>
+                <p style="font-size: 16px; margin-top: 10px;">A comprehensive smart locker booking platform for Egyptian tourist destinations</p>
+            </div>
+        </div>
+        
+        <div class="slide-number">3 / 12</div>
+    </div>
+
+    <!-- Slide 4: System Architecture -->
+    <div class="slide">
+        <h2 class="section-header">🏗️ System Architecture</h2>
+        
+        <div class="architecture">
+            <div class="arch-box">
+                <div class="arch-icon">📱</div>
+                <div class="arch-title">Frontend</div>
+                <div class="arch-tech">
+                    Flutter / Dart<br>
+                    Cross-platform Mobile<br>
+                    Material Design UI
+                </div>
+            </div>
+            
+            <div class="arch-arrow">→</div>
+            
+            <div class="arch-box">
+                <div class="arch-icon">⚡</div>
+                <div class="arch-title">Backend API</div>
+                <div class="arch-tech">
+                    Python FastAPI<br>
+                    Raw SQL Queries<br>
+                    JWT Authentication
+                </div>
+            </div>
+            
+            <div class="arch-arrow">→</div>
+            
+            <div class="arch-box">
+                <div class="arch-icon">🗄️</div>
+                <div class="arch-title">Database</div>
+                <div class="arch-tech">
+                    MySQL 8.0<br>
+                    14 Tables<br>
+                    Stored Procedures & Triggers
+                </div>
+            </div>
+        </div>
+        
+        <div class="instructor-info" style="margin-top: 50px;">
+            <div class="instructor-card">
+                <div class="instructor-role">Three-Tier Architecture</div>
+                <div class="instructor-name">Presentation → Logic → Data</div>
+            </div>
+            <div class="instructor-card">
+                <div class="instructor-role">RESTful API</div>
+                <div class="instructor-name">20+ Endpoints</div>
+            </div>
+            <div class="instructor-card">
+                <div class="instructor-role">Secure Auth</div>
+                <div class="instructor-name">JWT + bcrypt</div>
+            </div>
+        </div>
+        
+        <div class="slide-number">4 / 12</div>
+    </div>
+
+    <!-- Slide 5: Database Design -->
+    <div class="slide">
+        <h2 class="section-header">🗄️ Database Design</h2>
+        
+        <div class="db-stats">
+            <div class="stat-card">
+                <div class="stat-number">14</div>
+                <div class="stat-label">Tables</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">5</div>
+                <div class="stat-label">Stored Procedures</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">3</div>
+                <div class="stat-label">Triggers</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">4</div>
+                <div class="stat-label">Views</div>
+            </div>
+        </div>
+        
+        <h3 style="color: #CD853F; margin-bottom: 20px;">📋 Database Tables</h3>
+        
+        <div class="table-list">
+            <div class="table-item"><span class="table-icon">👤</span> Users</div>
+            <div class="table-item"><span class="table-icon">📍</span> Locations</div>
+            <div class="table-item"><span class="table-icon">🏠</span> Addresses</div>
+            <div class="table-item"><span class="table-icon">🔒</span> Lockers</div>
+            <div class="table-item"><span class="table-icon">💰</span> Pricing_Tiers</div>
+            <div class="table-item"><span class="table-icon">📅</span> Bookings</div>
+            <div class="table-item"><span class="table-icon">💳</span> Payments</div>
+            <div class="table-item"><span class="table-icon">💵</span> Payment_Methods</div>
+            <div class="table-item"><span class="table-icon">📱</span> QR_Codes</div>
+            <div class="table-item"><span class="table-icon">📝</span> Access_Logs</div>
+            <div class="table-item"><span class="table-icon">⭐</span> Reviews</div>
+            <div class="table-item"><span class="table-icon">🎫</span> Discounts</div>
+            <div class="table-item"><span class="table-icon">🔗</span> Booking_Discounts</div>
+            <div class="table-item"><span class="table-icon">🔔</span> Notifications</div>
+        </div>
+        
+        <div class="slide-number">5 / 12</div>
+    </div>
+
+    <!-- Slide 6: Key Database Features -->
+    <div class="slide">
+        <h2 class="section-header">⚙️ Database Features</h2>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px;">
+            <div>
+                <h3 style="color: #CD853F; margin-bottom: 20px;">🔧 Stored Procedures</h3>
+                <div class="code-block">
+                    <pre><span class="code-keyword">CREATE PROCEDURE</span> <span class="code-function">CreateBookingWithPayment</span>(
+    <span class="code-keyword">IN</span> p_user_id <span class="code-type">INT</span>,
+    <span class="code-keyword">IN</span> p_locker_id <span class="code-type">INT</span>,
+    <span class="code-keyword">IN</span> p_start_time <span class="code-type">DATETIME</span>,
+    <span class="code-keyword">IN</span> p_end_time <span class="code-type">DATETIME</span>
+)
+<span class="code-keyword">BEGIN</span>
+    <span class="code-keyword">DECLARE</span> v_booking_id <span class="code-type">INT</span>;
+    <span class="code-keyword">START TRANSACTION</span>;
+    <span class="code-comment">-- Create booking atomically</span>
+    <span class="code-keyword">INSERT INTO</span> Bookings (...);
+    <span class="code-keyword">UPDATE</span> Lockers <span class="code-keyword">SET</span> status = <span class="code-string">'Reserved'</span>;
+    <span class="code-keyword">COMMIT</span>;
+<span class="code-keyword">END</span></pre>
+                </div>
+            </div>
+            
+            <div>
+                <h3 style="color: #CD853F; margin-bottom: 20px;">⚡ Triggers</h3>
+                <div class="code-block">
+                    <pre><span class="code-keyword">CREATE TRIGGER</span> <span class="code-function">after_booking_completed</span>
+<span class="code-keyword">AFTER UPDATE ON</span> Bookings
+<span class="code-keyword">FOR EACH ROW</span>
+<span class="code-keyword">BEGIN</span>
+    <span class="code-keyword">IF</span> NEW.status = <span class="code-string">'Completed'</span> <span class="code-keyword">THEN</span>
+        <span class="code-keyword">UPDATE</span> Lockers 
+        <span class="code-keyword">SET</span> status = <span class="code-string">'Available'</span>
+        <span class="code-keyword">WHERE</span> locker_id = NEW.locker_id;
+    <span class="code-keyword">END IF</span>;
+<span class="code-keyword">END</span></pre>
+                </div>
+            </div>
+        </div>
+        
+        <div style="margin-top: 30px;">
+            <h3 style="color: #CD853F; margin-bottom: 20px;">📊 Views for Reporting</h3>
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;">
+                <div class="table-item">📈 LocationAvailabilityView</div>
+                <div class="table-item">💵 RevenueReportView</div>
+                <div class="table-item">👤 UserBookingHistoryView</div>
+                <div class="table-item">⭐ LocationRatingsView</div>
+            </div>
+        </div>
+        
+        <div class="slide-number">6 / 12</div>
+    </div>
+
+    <!-- Slide 7: API Endpoints -->
+    <div class="slide">
+        <h2 class="section-header">🔌 REST API Endpoints</h2>
+        
+        <div class="api-endpoints">
+            <div class="endpoint">
+                <span class="method post">POST</span>
+                <span class="endpoint-path">/auth/register</span>
+            </div>
+            <div class="endpoint">
+                <span class="method post">POST</span>
+                <span class="endpoint-path">/auth/login</span>
+            </div>
+            <div class="endpoint">
+                <span class="method get">GET</span>
+                <span class="endpoint-path">/locations</span>
+            </div>
+            <div class="endpoint">
+                <span class="method get">GET</span>
+                <span class="endpoint-path">/locations/{id}/pricing</span>
+            </div>
+            <div class="endpoint">
+                <span class="method get">GET</span>
+                <span class="endpoint-path">/lockers/available</span>
+            </div>
+            <div class="endpoint">
+                <span class="method post">POST</span>
+                <span class="endpoint-path">/bookings</span>
+            </div>
+            <div class="endpoint">
+                <span class="method get">GET</span>
+                <span class="endpoint-path">/bookings/{id}</span>
+            </div>
+            <div class="endpoint">
+                <span class="method get">GET</span>
+                <span class="endpoint-path">/bookings/{id}/qr</span>
+            </div>
+            <div class="endpoint">
+                <span class="method post">POST</span>
+                <span class="endpoint-path">/payments</span>
+            </div>
+            <div class="endpoint">
+                <span class="method post">POST</span>
+                <span class="endpoint-path">/reviews</span>
+            </div>
+            <div class="endpoint">
+                <span class="method get">GET</span>
+                <span class="endpoint-path">/reviews/location/{id}</span>
+            </div>
+            <div class="endpoint">
+                <span class="method post">POST</span>
+                <span class="endpoint-path">/discounts/validate</span>
+            </div>
+        </div>
+        
+        <div style="margin-top: 40px; text-align: center;">
+            <p style="color: #aaa;">Interactive API Documentation available at <code style="background: #333; padding: 5px 10px; border-radius: 5px;">http://localhost:8000/docs</code></p>
+        </div>
+        
+        <div class="slide-number">7 / 12</div>
+    </div>
+
+    <!-- Slide 8: App Features -->
+    <div class="slide">
+        <h2 class="section-header">✨ Application Features</h2>
+        
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">🔐</div>
+                <div class="feature-title">Secure Authentication</div>
+                <div class="feature-desc">JWT-based login with bcrypt password hashing</div>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">📍</div>
+                <div class="feature-title">Location Discovery</div>
+                <div class="feature-desc">Browse lockers at Egyptian tourist spots</div>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">📱</div>
+                <div class="feature-title">Real-time Availability</div>
+                <div class="feature-desc">Check locker status before booking</div>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">📅</div>
+                <div class="feature-title">Easy Booking</div>
+                <div class="feature-desc">Select size, duration, and confirm</div>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">💳</div>
+                <div class="feature-title">Payment Processing</div>
+                <div class="feature-desc">Secure payment with multiple methods</div>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">📲</div>
+                <div class="feature-title">QR Code Access</div>
+                <div class="feature-desc">Digital key for locker unlock</div>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">⏰</div>
+                <div class="feature-title">Active Rental Tracking</div>
+                <div class="feature-desc">Countdown timer for booking expiry</div>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">📜</div>
+                <div class="feature-title">Booking History</div>
+                <div class="feature-desc">View all past rentals</div>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">⭐</div>
+                <div class="feature-title">Reviews & Ratings</div>
+                <div class="feature-desc">Rate locations after use</div>
+            </div>
+        </div>
+        
+        <div class="slide-number">8 / 12</div>
+    </div>
+
+    <!-- Slide 9: Egyptian Locations -->
+    <div class="slide">
+        <h2 class="section-header">🇪🇬 Egyptian Locations</h2>
+        
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">🏛️</div>
+                <div class="feature-title">Giza Pyramids</div>
+                <div class="feature-desc">Secure storage for tourists visiting the ancient wonders</div>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">✈️</div>
+                <div class="feature-title">Cairo Airport</div>
+                <div class="feature-desc">Luggage storage for travelers</div>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">🛍️</div>
+                <div class="feature-title">City Stars Mall</div>
+                <div class="feature-desc">Shopping convenience in Cairo</div>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">🏪</div>
+                <div class="feature-title">Khan El-Khalili</div>
+                <div class="feature-desc">Hands-free shopping at the historic bazaar</div>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">📚</div>
+                <div class="feature-title">Alexandria Library</div>
+                <div class="feature-desc">Secure bags while exploring knowledge</div>
+            </div>
+        </div>
+        
+        <div style="margin-top: 40px; text-align: center;">
+            <div style="background: rgba(139, 69, 19, 0.3); padding: 20px 40px; border-radius: 15px; display: inline-block;">
+                <p style="font-size: 18px;">🔒 3 Sizes Available: <strong>Small</strong> (20 EGP/hr) • <strong>Medium</strong> (35 EGP/hr) • <strong>Large</strong> (50 EGP/hr)</p>
+            </div>
+        </div>
+        
+        <div class="slide-number">9 / 12</div>
+    </div>
+
+    <!-- Slide 10: Demo Screenshots -->
+    <div class="slide">
+        <h2 class="section-header">📸 Application Demo</h2>
+        
+        <div class="screenshots">
+            <div class="screenshot-card">
+                <div class="screenshot-placeholder">🏠</div>
+                <div class="screenshot-label">Home Screen - Location List</div>
+            </div>
+            
+            <div class="screenshot-card">
+                <div class="screenshot-placeholder">🔐</div>
+                <div class="screenshot-label">Locker Selection</div>
+            </div>
+            
+            <div class="screenshot-card">
+                <div class="screenshot-placeholder">💳</div>
+                <div class="screenshot-label">Payment & Booking</div>
+            </div>
+        </div>
+        
+        <div style="margin-top: 30px; text-align: center;">
+            <p style="color: #aaa; font-size: 16px;">Live demo available at <code style="background: #333; padding: 5px 10px; border-radius: 5px;">flutter run</code></p>
+        </div>
+        
+        <div class="slide-number">10 / 12</div>
+    </div>
+
+    <!-- Slide 11: Results & Future Work -->
+    <div class="slide">
+        <h2 class="section-header">📊 Results & Future Work</h2>
+        
+        <div class="results-grid">
+            <div class="result-card">
+                <h3>✅ Achievements</h3>
+                <ul>
+                    <li>Complete 14-table normalized database</li>
+                    <li>5 stored procedures for complex operations</li>
+                    <li>3 triggers for automatic updates</li>
+                    <li>20+ REST API endpoints</li>
+                    <li>Cross-platform mobile app</li>
+                    <li>Secure JWT authentication</li>
+                    <li>Real-time availability tracking</li>
+                </ul>
+            </div>
+            
+            <div class="result-card" style="border-left-color: #2196F3;">
+                <h3 style="color: #2196F3;">🚀 Future Enhancements</h3>
+                <ul>
+                    <li>IoT smart lock integration</li>
+                    <li>Egyptian payment gateways (Fawry, InstaPay)</li>
+                    <li>GPS navigation to locations</li>
+                    <li>Push notifications</li>
+                    <li>Admin analytics dashboard</li>
+                    <li>Dynamic surge pricing</li>
+                    <li>Arabic language support</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="slide-number">11 / 12</div>
+    </div>
+
+    <!-- Slide 12: Thank You -->
+    <div class="slide thank-you-slide">
+        <div class="logo">🔐</div>
+        <h1 class="thank-you-text">Thank You!</h1>
+        
+        <div class="contact-info">
+            <h3>Questions?</h3>
+            <p><strong>Project:</strong> LockSpot - Smart Locker Database</p>
+            <p><strong>Course:</strong> ECEN424 - Introduction to Databases</p>
+            <p><strong>Team:</strong> LockSpot</p>
+            <p style="margin-top: 20px; font-size: 40px;">🇪🇬</p>
+        </div>
+        
+        <div class="slide-number">12 / 12</div>
+    </div>
+
+</body>
+</html>
