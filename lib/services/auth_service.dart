@@ -74,6 +74,8 @@ class AuthService extends ChangeNotifier {
           phone: user.phone,
           isVerified: user.isVerified,
         );
+        // Set current user ID for user-specific data
+        _api.setCurrentUserId(_currentUser!.id);
         _authStateController.add(_currentUser);
       }
     } catch (e) {
@@ -114,6 +116,9 @@ class AuthService extends ChangeNotifier {
         isVerified: response.user.isVerified,
       );
 
+      // Set current user ID for user-specific data
+      _api.setCurrentUserId(_currentUser!.id);
+
       _authStateController.add(_currentUser);
       notifyListeners();
 
@@ -137,6 +142,9 @@ class AuthService extends ChangeNotifier {
       phone: '+966500000000',
       isVerified: true,
     );
+
+    // Set current user ID for user-specific data
+    _api.setCurrentUserId(_currentUser!.id);
 
     _authStateController.add(_currentUser);
     notifyListeners();
@@ -175,6 +183,7 @@ class AuthService extends ChangeNotifier {
   /// Sign out
   Future<void> signOut() async {
     await _clearStoredAuth();
+    _api.clearUserData(); // Clear user-specific data
     _currentUser = null;
     _authStateController.add(null);
     notifyListeners();

@@ -12,17 +12,28 @@ class ApiService {
 
   String? _authToken;
   bool _isDemoMode = false;
+  int? _currentUserId;
 
   // Singleton pattern
   static final ApiService _instance = ApiService._internal();
   factory ApiService() => _instance;
   ApiService._internal();
 
-  /// Check if in demo mode
+  /// Set current user ID for user-specific data
+  void setCurrentUserId(int userId) {
+    _currentUserId = userId;
+  }
+
+  /// Get current user ID
+  int? get currentUserId => _currentUserId;
+
+  /// ALWAYS use demo mode for now (backend not fully configured)
+  /// This ensures all users (demo or signup) can test the full flow
+  bool get isDemoMode => true; // Force demo mode for all users
+
+  /// Check if in demo mode (async, from storage)
   Future<bool> checkDemoMode() async {
-    final prefs = await SharedPreferences.getInstance();
-    _isDemoMode = prefs.getBool('is_demo_mode') ?? false;
-    return _isDemoMode;
+    return true; // Always demo mode
   }
 
   /// Set demo mode
@@ -41,6 +52,14 @@ class ApiService {
   /// Clear auth token on logout
   void clearAuthToken() {
     _authToken = null;
+    _currentUserId = null;
+  }
+
+  /// Clear all user-specific data on logout
+  void clearUserData() {
+    _authToken = null;
+    _currentUserId = null;
+    // Don't clear bookings - they're stored per user ID
   }
 
   /// Get headers with optional auth
@@ -172,7 +191,7 @@ class ApiService {
 
   /// Get current user profile
   Future<User> getCurrentUser() async {
-    if (_isDemoMode) {
+    if (isDemoMode) {
       return User(
         userId: 999,
         firstName: 'Demo',
@@ -193,7 +212,7 @@ class ApiService {
   /// Get all locker locations
   Future<List<LockerLocation>> getLocations({String? city}) async {
     // Return mock data in demo mode
-    if (_isDemoMode) {
+    if (isDemoMode) {
       return _getMockLocations();
     }
 
@@ -211,6 +230,13 @@ class ApiService {
         .toList();
   }
 
+  /// Helper to calculate available lockers at a location
+  int _getAvailableLockersCount(int locationId) {
+    final allLockers = _getMockLockers(locationId: locationId);
+    final availableLockers = allLockers.where((l) => !_bookedLockerIds.contains(l.lockerId)).toList();
+    return availableLockers.length;
+  }
+  
   /// Mock locations for demo mode - Real Egypt locations
   List<LockerLocation> _getMockLocations() {
     return [
@@ -218,7 +244,7 @@ class ApiService {
         locationId: 1,
         name: 'Sheikh Zayed Mall',
         description: 'Premium smart lockers at Arkan Plaza, Sheikh Zayed City',
-        availableLockers: 12,
+        availableLockers: _getAvailableLockersCount(1),
         totalLockers: 20,
         operatingHoursStart: '09:00',
         operatingHoursEnd: '23:00',
@@ -236,7 +262,7 @@ class ApiService {
         locationId: 2,
         name: 'Cairo Festival City',
         description: '24/7 locker access at CFC Mall, New Cairo',
-        availableLockers: 35,
+        availableLockers: _getAvailableLockersCount(2),
         totalLockers: 50,
         operatingHoursStart: '00:00',
         operatingHoursEnd: '23:59',
@@ -254,7 +280,7 @@ class ApiService {
         locationId: 3,
         name: 'Alexandria Bibliotheca',
         description: 'Secure lockers near the famous Library of Alexandria',
-        availableLockers: 8,
+        availableLockers: _getAvailableLockersCount(3),
         totalLockers: 15,
         operatingHoursStart: '08:00',
         operatingHoursEnd: '20:00',
@@ -272,7 +298,7 @@ class ApiService {
         locationId: 4,
         name: 'Citystars Heliopolis',
         description: 'Large locker station at Citystars Shopping Center',
-        availableLockers: 42,
+        availableLockers: _getAvailableLockersCount(4),
         totalLockers: 60,
         operatingHoursStart: '10:00',
         operatingHoursEnd: '22:00',
@@ -290,7 +316,7 @@ class ApiService {
         locationId: 5,
         name: 'Mall of Egypt',
         description: 'Premium lockers at Mall of Egypt, 6th October',
-        availableLockers: 5,
+        availableLockers: _getAvailableLockersCount(5),
         totalLockers: 25,
         operatingHoursStart: '10:00',
         operatingHoursEnd: '23:00',
@@ -308,7 +334,7 @@ class ApiService {
         locationId: 6,
         name: 'Maadi Grand Mall',
         description: 'Convenient lockers in Maadi district',
-        availableLockers: 18,
+        availableLockers: _getAvailableLockersCount(6),
         totalLockers: 30,
         operatingHoursStart: '09:00',
         operatingHoursEnd: '22:00',
@@ -327,7 +353,7 @@ class ApiService {
 
   /// Get location by ID
   Future<LockerLocation> getLocationById(int locationId) async {
-    if (_isDemoMode) {
+    if (isDemoMode) {
       return _getMockLocations().firstWhere((l) => l.locationId == locationId);
     }
 
@@ -341,7 +367,7 @@ class ApiService {
 
   /// Get pricing for a location
   Future<List<PricingTier>> getLocationPricing(int locationId) async {
-    if (_isDemoMode) {
+    if (isDemoMode) {
       return [
         PricingTier(tierId: 1, name: 'Small Locker', size: 'Small', basePrice: 10.0, hourlyRate: 5.0, dailyRate: 30.0),
         PricingTier(tierId: 2, name: 'Medium Locker', size: 'Medium', basePrice: 15.0, hourlyRate: 8.0, dailyRate: 50.0),
@@ -361,6 +387,9 @@ class ApiService {
 
   // ==================== LOCKERS ====================
 
+  /// Track booked locker IDs in demo mode
+  static final Set<int> _bookedLockerIds = {};
+
   /// Get available lockers with filters
   Future<List<Locker>> getAvailableLockers({
     int? locationId,
@@ -368,8 +397,18 @@ class ApiService {
     DateTime? startTime,
     DateTime? endTime,
   }) async {
-    if (_isDemoMode) {
-      return _getMockLockers(locationId: locationId);
+    if (isDemoMode) {
+      var lockers = _getMockLockers(locationId: locationId);
+      
+      // Filter by size if specified
+      if (size != null) {
+        lockers = lockers.where((l) => l.size.toLowerCase() == size.toLowerCase()).toList();
+      }
+      
+      // Exclude already booked lockers
+      lockers = lockers.where((l) => !_bookedLockerIds.contains(l.lockerId)).toList();
+      
+      return lockers;
     }
 
     final queryParams = <String, String>{};
@@ -453,7 +492,7 @@ class ApiService {
     DateTime startTime,
     DateTime endTime,
   ) async {
-    if (_isDemoMode) {
+    if (isDemoMode) {
       return {'available': true, 'message': 'Locker is available'};
     }
 
@@ -482,7 +521,7 @@ class ApiService {
     String? size,
     double? totalAmount,
   }) async {
-    if (_isDemoMode) {
+    if (isDemoMode) {
       // Find the locker details
       final allLockers = _getMockLockers();
       final locker = allLockers.firstWhere(
@@ -490,12 +529,13 @@ class ApiService {
         orElse: () => allLockers.first,
       );
       
+      final userId = _currentUserId ?? 0;
       final duration = endTime.difference(startTime).inHours;
       final calcTotal = totalAmount ?? (locker.hourlyRate * duration);
       
       final booking = Booking(
         bookingId: DateTime.now().millisecondsSinceEpoch,
-        userId: 999,
+        userId: userId,
         lockerId: lockerId,
         locationName: locationName ?? locker.locationName ?? 'Demo Location',
         unitNumber: unitNumber ?? locker.unitNumber,
@@ -511,8 +551,14 @@ class ApiService {
         paymentStatus: 'paid',
       );
       
-      // Store in demo bookings list
-      _demoBookings.add(booking);
+      // Store in user-specific bookings list
+      if (_userBookings[userId] == null) {
+        _userBookings[userId] = [];
+      }
+      _userBookings[userId]!.add(booking);
+      
+      // Mark locker as booked
+      _bookedLockerIds.add(lockerId);
       
       return booking;
     }
@@ -533,7 +579,7 @@ class ApiService {
 
   /// Get user's bookings
   Future<List<Booking>> getUserBookings({String? status}) async {
-    if (_isDemoMode) {
+    if (isDemoMode) {
       final bookings = _getMockBookings();
       if (status != null) {
         return bookings.where((b) => b.status.toLowerCase() == status.toLowerCase()).toList();
@@ -564,30 +610,17 @@ class ApiService {
     }
   }
 
-  /// Mock bookings for demo mode - stored in memory
-  static final List<Booking> _demoBookings = [];
+  /// Mock bookings for demo mode - stored per user ID
+  static final Map<int, List<Booking>> _userBookings = {};
 
   List<Booking> _getMockBookings() {
-    // Return stored demo bookings plus some sample completed ones
-    final sampleCompleted = [
-      Booking(
-        bookingId: 9001,
-        userId: 999,
-        lockerId: 401,
-        locationName: 'Citystars Heliopolis',
-        unitNumber: 'CS-01',
-        size: 'Small',
-        startTime: DateTime.now().subtract(const Duration(days: 3)),
-        endTime: DateTime.now().subtract(const Duration(days: 3)).add(const Duration(hours: 4)),
-        bookingType: 'Storage',
-        subtotalAmount: 40.0,
-        discountAmount: 0.0,
-        totalAmount: 40.0,
-        status: 'Completed',
-        paymentStatus: 'paid',
-      ),
-    ];
-    return [..._demoBookings, ...sampleCompleted];
+    final userId = _currentUserId ?? 0;
+    
+    // Get bookings for current user only
+    final userBookings = _userBookings[userId] ?? [];
+    
+    // Return only current user's bookings (no sample data mixed in)
+    return userBookings;
   }
 
   /// Alias for getUserBookings (for backwards compatibility)
@@ -595,7 +628,7 @@ class ApiService {
 
   /// Get booking by ID
   Future<Booking> getBookingById(int bookingId) async {
-    if (_isDemoMode) {
+    if (isDemoMode) {
       return _getMockBookings().firstWhere(
         (b) => b.bookingId == bookingId,
         orElse: () => _getMockBookings().first,
@@ -608,7 +641,7 @@ class ApiService {
 
   /// Generate QR code for booking
   Future<QRCode> generateBookingQR(int bookingId) async {
-    if (_isDemoMode) {
+    if (isDemoMode) {
       return QRCode(
         qrId: 1,
         bookingId: bookingId,
@@ -624,7 +657,7 @@ class ApiService {
 
   /// Cancel a booking
   Future<Map<String, dynamic>> cancelBooking(int bookingId, {String? reason}) async {
-    if (_isDemoMode) {
+    if (isDemoMode) {
       return {'success': true, 'message': 'Booking cancelled successfully'};
     }
 
@@ -643,12 +676,12 @@ class ApiService {
     String methodType = 'Visa',
     String? cardLastFour,
   }) async {
-    if (_isDemoMode) {
+    if (isDemoMode) {
       // Return a successful mock payment
       return Payment(
         paymentId: DateTime.now().millisecondsSinceEpoch,
         bookingId: bookingId,
-        amount: 0, // Amount is on the booking
+        amount: 0.0, // Amount is on the booking
         status: 'Success',
         paymentDate: DateTime.now(),
         transactionReference: 'TXN-${DateTime.now().millisecondsSinceEpoch}',

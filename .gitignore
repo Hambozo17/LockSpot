@@ -50,5 +50,15 @@ lib/firebase_options.dart
 android/app/google-services.json
 ios/Runner/GoogleService-Info.plist
 
-*.md
+# Backend Python
+backend/venv/
+backend/__pycache__/
+backend/*/__pycache__/
+backend/*/*/__pycache__/
+*.pyc
+backend/db.sqlite3
+
+# Temporary files
 diff.sh
+*.log
+*.tmp
