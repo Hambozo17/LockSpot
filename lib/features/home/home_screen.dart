@@ -15,8 +15,10 @@ class _HomeScreenState extends State<HomeScreen> {
   int _filterIndex = 0;
   int? _selectedLocationId;
   List<LockerLocation> _locations = [];
+  List<LockerLocation> _filteredLocations = [];
   bool _isLoading = true;
   String? _error;
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
@@ -34,7 +36,9 @@ class _HomeScreenState extends State<HomeScreen> {
       final locations = await _api.getLocations();
       setState(() {
         _locations = locations;
+        _filteredLocations = locations;
         _isLoading = false;
+        _applyFilter();
       });
     } catch (e) {
       setState(() {
@@ -42,6 +46,36 @@ class _HomeScreenState extends State<HomeScreen> {
         _isLoading = false;
       });
     }
+  }
+
+  void _applyFilter() {
+    List<LockerLocation> result = List.from(_locations);
+    
+    // Apply search filter
+    final searchQuery = _searchController.text.toLowerCase();
+    if (searchQuery.isNotEmpty) {
+      result = result.where((loc) => 
+        loc.name.toLowerCase().contains(searchQuery) ||
+        loc.city.toLowerCase().contains(searchQuery)
+      ).toList();
+    }
+    
+    // Apply sorting
+    switch (_filterIndex) {
+      case 0: // Near you - sort by available lockers (higher first)
+        result.sort((a, b) => b.availableLockers.compareTo(a.availableLockers));
+        break;
+      case 1: // Low price - sort by rating (as proxy for value)
+        result.sort((a, b) => a.averageRating.compareTo(b.averageRating));
+        break;
+      case 2: // Availability - sort by availability count
+        result.sort((a, b) => b.availableLockers.compareTo(a.availableLockers));
+        break;
+    }
+    
+    setState(() {
+      _filteredLocations = result;
+    });
   }
 
   @override
@@ -60,7 +94,17 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           children: [
             ElevatedButton(
-              onPressed: () {},
+              onPressed: () {
+                // Auto-select first available location
+                if (_filteredLocations.isNotEmpty) {
+                  final bestLocation = _filteredLocations.reduce((a, b) => 
+                    a.availableLockers > b.availableLockers ? a : b);
+                  setState(() => _selectedLocationId = bestLocation.locationId);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Found: ${bestLocation.name} with ${bestLocation.availableLockers} lockers')),
+                  );
+                }
+              },
               child: const Text('Find lockers near you'),
             ),
             const SizedBox(height: 16),
@@ -71,27 +115,38 @@ class _HomeScreenState extends State<HomeScreen> {
                   ChoiceChip(
                     label: const Text('Near you'),
                     selected: _filterIndex == 0,
-                    onSelected: (selected) => setState(() => _filterIndex = 0),
+                    onSelected: (selected) {
+                      setState(() => _filterIndex = 0);
+                      _applyFilter();
+                    },
                   ),
                   const SizedBox(width: 8),
                   ChoiceChip(
                     label: const Text('Low price'),
                     selected: _filterIndex == 1,
-                    onSelected: (selected) => setState(() => _filterIndex = 1),
+                    onSelected: (selected) {
+                      setState(() => _filterIndex = 1);
+                      _applyFilter();
+                    },
                   ),
                   const SizedBox(width: 8),
                   ChoiceChip(
                     label: const Text('Availability'),
                     selected: _filterIndex == 2,
-                    onSelected: (selected) => setState(() => _filterIndex = 2),
+                    onSelected: (selected) {
+                      setState(() => _filterIndex = 2);
+                      _applyFilter();
+                    },
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 16),
-            const TextField(
-              decoration: InputDecoration(
-                hintText: 'Search',
+            TextField(
+              controller: _searchController,
+              onChanged: (_) => _applyFilter(),
+              decoration: const InputDecoration(
+                hintText: 'Search locations...',
                 prefixIcon: Icon(Icons.search),
               ),
             ),
@@ -115,20 +170,24 @@ class _HomeScreenState extends State<HomeScreen> {
                         )
                       : RefreshIndicator(
                           onRefresh: _loadLocations,
-                          child: ListView.builder(
-                            itemCount: _locations.length,
-                            itemBuilder: (context, index) {
-                              final location = _locations[index];
-                              final isSelected = _selectedLocationId == location.locationId;
-                              return GestureDetector(
-                                onTap: () => setState(() => _selectedLocationId = location.locationId),
-                                child: _LocationCard(
-                                  location: location,
-                                  isSelected: isSelected,
+                          child: _filteredLocations.isEmpty
+                              ? const Center(
+                                  child: Text('No locations found'),
+                                )
+                              : ListView.builder(
+                                  itemCount: _filteredLocations.length,
+                                  itemBuilder: (context, index) {
+                                    final location = _filteredLocations[index];
+                                    final isSelected = _selectedLocationId == location.locationId;
+                                    return GestureDetector(
+                                      onTap: () => setState(() => _selectedLocationId = location.locationId),
+                                      child: _LocationCard(
+                                        location: location,
+                                        isSelected: isSelected,
+                                      ),
+                                    );
+                                  },
                                 ),
-                              );
-                            },
-                          ),
                         ),
             ),
             SizedBox(

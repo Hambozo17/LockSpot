@@ -143,10 +143,12 @@ class ActiveRentalListItem extends StatefulWidget {
 class _ActiveRentalListItemState extends State<ActiveRentalListItem> {
   Timer? _timer;
   Duration _remainingTime = Duration.zero;
+  bool _isInitialized = false;
 
   @override
   void initState() {
     super.initState();
+    _calculateInitialTime();
     _startTimer();
   }
 
@@ -154,6 +156,19 @@ class _ActiveRentalListItemState extends State<ActiveRentalListItem> {
   void dispose() {
     _timer?.cancel();
     super.dispose();
+  }
+
+  void _calculateInitialTime() {
+    final expiryTime = widget.booking.endTime;
+    final now = DateTime.now();
+    final remaining = expiryTime.difference(now);
+    
+    if (remaining.isNegative) {
+      _remainingTime = Duration.zero;
+    } else {
+      _remainingTime = remaining;
+    }
+    _isInitialized = true;
   }
 
   void _startTimer() {
@@ -238,7 +253,7 @@ class _ActiveRentalListItemState extends State<ActiveRentalListItem> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  _remainingTime == Duration.zero
+                  !_isInitialized
                       ? const SizedBox(
                           width: 16,
                           height: 16,
@@ -246,15 +261,15 @@ class _ActiveRentalListItemState extends State<ActiveRentalListItem> {
                         )
                       : Text(
                           _formatDuration(_remainingTime),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: primaryBrown,
+                            color: _remainingTime.inMinutes < 30 ? Colors.red : primaryBrown,
                           ),
                         ),
                   const SizedBox(height: 4),
                   Text(
-                    'remaining',
+                    _remainingTime == Duration.zero ? 'expired' : 'remaining',
                     style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                   ),
                 ],

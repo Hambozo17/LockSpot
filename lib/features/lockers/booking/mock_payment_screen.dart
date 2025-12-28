@@ -32,6 +32,38 @@ class _MockPaymentScreenState extends State<MockPaymentScreen> {
   final _nameController = TextEditingController();
   bool _agreedToTerms = false;
   bool _isLoading = false;
+  int _selectedCardTemplate = -1;
+
+  // Test card templates
+  final List<Map<String, String>> _cardTemplates = [
+    {'name': 'Ahmed Mohamed', 'number': '4242424242424242', 'expiry': '12/27', 'cvv': '123'},
+    {'name': 'Sara Ahmed', 'number': '5555555555554444', 'expiry': '06/28', 'cvv': '456'},
+    {'name': 'Omar Hassan', 'number': '4000056655665556', 'expiry': '09/26', 'cvv': '789'},
+    {'name': 'Fatima Ali', 'number': '5200828282828210', 'expiry': '03/29', 'cvv': '321'},
+    {'name': 'Youssef Mahmoud', 'number': '4111111111111111', 'expiry': '11/27', 'cvv': '654'},
+  ];
+
+  void _selectCardTemplate(int index) {
+    final template = _cardTemplates[index];
+    setState(() {
+      _selectedCardTemplate = index;
+      _cardNumberController.text = template['number']!;
+      _expiryController.text = template['expiry']!;
+      _cvvController.text = template['cvv']!;
+      _nameController.text = template['name']!;
+    });
+  }
+
+  String _formatCardNumber(String number) {
+    // Format as XXXX XXXX XXXX XXXX
+    final cleaned = number.replaceAll(' ', '');
+    final buffer = StringBuffer();
+    for (int i = 0; i < cleaned.length; i++) {
+      if (i > 0 && i % 4 == 0) buffer.write(' ');
+      buffer.write(cleaned[i]);
+    }
+    return buffer.toString();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -135,6 +167,32 @@ class _MockPaymentScreenState extends State<MockPaymentScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
+                    
+                    // Test Card Templates
+                    const Text(
+                      'Quick Fill (Test Cards):',
+                      style: TextStyle(fontSize: 14, color: Colors.grey),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 40,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: _cardTemplates.length,
+                        itemBuilder: (context, index) {
+                          final isSelected = _selectedCardTemplate == index;
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: ChoiceChip(
+                              label: Text(_cardTemplates[index]['name']!.split(' ')[0]),
+                              selected: isSelected,
+                              onSelected: (_) => _selectCardTemplate(index),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 16),
 
                     TextField(
                       controller: _cardNumberController,
@@ -204,7 +262,7 @@ class _MockPaymentScreenState extends State<MockPaymentScreen> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _agreedToTerms && !_isLoading
+                onPressed: _canProceed() && !_isLoading
                     ? _handlePayment
                     : null,
                 child: _isLoading
@@ -216,6 +274,14 @@ class _MockPaymentScreenState extends State<MockPaymentScreen> {
         ),
       ),
     );
+  }
+
+  bool _canProceed() {
+    return _agreedToTerms &&
+        _cardNumberController.text.replaceAll(' ', '').length >= 13 &&
+        _expiryController.text.length >= 4 &&
+        _cvvController.text.length >= 3 &&
+        _nameController.text.isNotEmpty;
   }
 
   Future<void> _handlePayment() async {

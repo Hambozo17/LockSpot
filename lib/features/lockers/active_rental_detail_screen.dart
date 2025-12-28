@@ -78,6 +78,16 @@ class _ActiveRentalDetailScreenState extends State<ActiveRentalDetailScreen> {
 
   void _startCountdown(DateTime expiryTime) {
     _countdownTimer?.cancel();
+    
+    // Calculate initial time immediately
+    final now = DateTime.now();
+    final remaining = expiryTime.difference(now);
+    if (remaining.isNegative) {
+      setState(() => _remainingTime = Duration.zero);
+      return;
+    }
+    setState(() => _remainingTime = remaining);
+    
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (mounted) {
         final now = DateTime.now();

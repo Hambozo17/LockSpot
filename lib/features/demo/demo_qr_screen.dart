@@ -9,10 +9,10 @@ import 'package:qr_flutter/qr_flutter.dart';
 class DemoQRScreen extends StatelessWidget {
   const DemoQRScreen({super.key});
 
-  // GitHub Release URLs
-  static const String apkDownloadUrl = 'https://github.com/Hambozo17/LockSpot/releases/latest/download/app-release.apk';
+  // Download URLs
+  static const String downloadPageUrl = 'https://hydrogenous-mittie-loopily.ngrok-free.dev/download/';
+  static const String apkDownloadUrl = 'https://github.com/Hambozo17/LockSpot/releases/download/v1.0.0/app-release.apk';
   static const String webAppUrl = 'https://github.com/Hambozo17/LockSpot'; // GitHub repo page
-  static const String playStoreUrl = 'https://play.google.com/store/apps/details?id=com.officerk.lockspot';
   static const String repoUrl = 'https://github.com/Hambozo17/LockSpot';
 
   @override
@@ -61,9 +61,9 @@ class DemoQRScreen extends StatelessWidget {
               icon: Icons.android,
               iconColor: Colors.green,
               title: 'Android APK',
-              subtitle: 'Direct download (No Play Store needed)',
-              qrData: apkDownloadUrl,
-              onTap: () => _launchUrl(apkDownloadUrl),
+              subtitle: 'Scan to download the app',
+              qrData: downloadPageUrl,
+              onTap: () => _launchUrl(downloadPageUrl),
             ),
 
             const SizedBox(height: 16),
