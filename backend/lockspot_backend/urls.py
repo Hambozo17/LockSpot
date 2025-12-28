@@ -114,7 +114,7 @@ def download_page(request):
         <h1>LockSpot</h1>
         <p class="subtitle">Smart Locker Rental System</p>
         
-        <a href="https://github.com/YOUR_USERNAME/lockspot/releases/latest/download/app-release.apk" 
+        <a href="https://github.com/Hambozo17/LockSpot/releases/download/v1.0.0/app-release.apk" 
            class="download-btn">
             📱 Download APK
         </a>
