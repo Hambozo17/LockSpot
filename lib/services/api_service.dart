@@ -211,58 +211,115 @@ class ApiService {
         .toList();
   }
 
-  /// Mock locations for demo mode
+  /// Mock locations for demo mode - Real Egypt locations
   List<LockerLocation> _getMockLocations() {
     return [
       Location(
         locationId: 1,
-        name: 'Riyadh Mall',
-        description: 'Premium locker location at Riyadh Mall',
-        availableLockers: 32,
-        totalLockers: 50,
-        operatingHoursStart: '08:00',
-        operatingHoursEnd: '22:00',
+        name: 'Sheikh Zayed Mall',
+        description: 'Premium smart lockers at Arkan Plaza, Sheikh Zayed City',
+        availableLockers: 12,
+        totalLockers: 20,
+        operatingHoursStart: '09:00',
+        operatingHoursEnd: '23:00',
+        averageRating: 4.8,
         address: LocationAddress(
           addressId: 1,
-          streetAddress: 'King Fahd Road',
-          city: 'Riyadh',
-          country: 'Saudi Arabia',
-          latitude: 24.7136,
-          longitude: 46.6753,
+          streetAddress: 'Arkan Plaza, 26th of July Corridor',
+          city: 'Sheikh Zayed',
+          country: 'Egypt',
+          latitude: 30.0131,
+          longitude: 30.9718,
         ),
       ),
       Location(
         locationId: 2,
-        name: 'Jeddah Central Station',
-        description: '24/7 locker access at the station',
-        availableLockers: 25,
-        totalLockers: 40,
+        name: 'Cairo Festival City',
+        description: '24/7 locker access at CFC Mall, New Cairo',
+        availableLockers: 35,
+        totalLockers: 50,
         operatingHoursStart: '00:00',
         operatingHoursEnd: '23:59',
+        averageRating: 4.5,
         address: LocationAddress(
           addressId: 2,
-          streetAddress: 'Al Madinah Road',
-          city: 'Jeddah',
-          country: 'Saudi Arabia',
-          latitude: 21.5433,
-          longitude: 39.1728,
+          streetAddress: 'Ring Road, New Cairo',
+          city: 'New Cairo',
+          country: 'Egypt',
+          latitude: 30.0284,
+          longitude: 31.4082,
         ),
       ),
       Location(
         locationId: 3,
-        name: 'KAFD Tower',
-        description: 'Business district premium lockers',
-        availableLockers: 18,
-        totalLockers: 30,
-        operatingHoursStart: '07:00',
-        operatingHoursEnd: '23:00',
+        name: 'Alexandria Bibliotheca',
+        description: 'Secure lockers near the famous Library of Alexandria',
+        availableLockers: 8,
+        totalLockers: 15,
+        operatingHoursStart: '08:00',
+        operatingHoursEnd: '20:00',
+        averageRating: 4.7,
         address: LocationAddress(
           addressId: 3,
-          streetAddress: 'King Abdullah Financial District',
-          city: 'Riyadh',
-          country: 'Saudi Arabia',
-          latitude: 24.7648,
-          longitude: 46.6426,
+          streetAddress: 'Al Corniche Road, Shatby',
+          city: 'Alexandria',
+          country: 'Egypt',
+          latitude: 31.2089,
+          longitude: 29.9092,
+        ),
+      ),
+      Location(
+        locationId: 4,
+        name: 'Citystars Heliopolis',
+        description: 'Large locker station at Citystars Shopping Center',
+        availableLockers: 42,
+        totalLockers: 60,
+        operatingHoursStart: '10:00',
+        operatingHoursEnd: '22:00',
+        averageRating: 4.3,
+        address: LocationAddress(
+          addressId: 4,
+          streetAddress: 'Omar Ibn El Khattab Street, Heliopolis',
+          city: 'Cairo',
+          country: 'Egypt',
+          latitude: 30.0724,
+          longitude: 31.3456,
+        ),
+      ),
+      Location(
+        locationId: 5,
+        name: 'Mall of Egypt',
+        description: 'Premium lockers at Mall of Egypt, 6th October',
+        availableLockers: 5,
+        totalLockers: 25,
+        operatingHoursStart: '10:00',
+        operatingHoursEnd: '23:00',
+        averageRating: 4.6,
+        address: LocationAddress(
+          addressId: 5,
+          streetAddress: '26th of July Corridor, 6th October City',
+          city: '6th October',
+          country: 'Egypt',
+          latitude: 29.9726,
+          longitude: 30.9433,
+        ),
+      ),
+      Location(
+        locationId: 6,
+        name: 'Maadi Grand Mall',
+        description: 'Convenient lockers in Maadi district',
+        availableLockers: 18,
+        totalLockers: 30,
+        operatingHoursStart: '09:00',
+        operatingHoursEnd: '22:00',
+        averageRating: 4.2,
+        address: LocationAddress(
+          addressId: 6,
+          streetAddress: 'Corniche El Nile, Maadi',
+          city: 'Maadi',
+          country: 'Egypt',
+          latitude: 29.9602,
+          longitude: 31.2569,
         ),
       ),
     ];
@@ -335,20 +392,59 @@ class ApiService {
     }
   }
 
-  /// Mock lockers for demo mode
+  /// Mock lockers for demo mode - different counts per location
   List<Locker> _getMockLockers({int? locationId}) {
-    final allLockers = [
-      Locker(lockerId: 1, locationId: 1, locationName: 'Riyadh Mall', unitNumber: 'A-01', size: 'Small', status: 'available', hourlyRate: 5.0, dailyRate: 30.0),
-      Locker(lockerId: 2, locationId: 1, locationName: 'Riyadh Mall', unitNumber: 'A-02', size: 'Medium', status: 'available', hourlyRate: 8.0, dailyRate: 50.0),
-      Locker(lockerId: 3, locationId: 1, locationName: 'Riyadh Mall', unitNumber: 'A-03', size: 'Large', status: 'available', hourlyRate: 12.0, dailyRate: 75.0),
-      Locker(lockerId: 4, locationId: 2, locationName: 'Jeddah Central', unitNumber: 'B-01', size: 'Small', status: 'available', hourlyRate: 5.0, dailyRate: 30.0),
-      Locker(lockerId: 5, locationId: 2, locationName: 'Jeddah Central', unitNumber: 'B-02', size: 'Large', status: 'available', hourlyRate: 12.0, dailyRate: 75.0),
-      Locker(lockerId: 6, locationId: 3, locationName: 'KAFD Tower', unitNumber: 'C-01', size: 'Medium', status: 'available', hourlyRate: 10.0, dailyRate: 60.0),
-    ];
+    final Map<int, List<Locker>> lockersByLocation = {
+      1: [ // Sheikh Zayed - 12 available
+        Locker(lockerId: 101, locationId: 1, locationName: 'Sheikh Zayed Mall', unitNumber: 'SZ-01', size: 'Small', status: 'available', hourlyRate: 10.0, dailyRate: 60.0),
+        Locker(lockerId: 102, locationId: 1, locationName: 'Sheikh Zayed Mall', unitNumber: 'SZ-02', size: 'Small', status: 'available', hourlyRate: 10.0, dailyRate: 60.0),
+        Locker(lockerId: 103, locationId: 1, locationName: 'Sheikh Zayed Mall', unitNumber: 'SZ-03', size: 'Medium', status: 'available', hourlyRate: 15.0, dailyRate: 90.0),
+        Locker(lockerId: 104, locationId: 1, locationName: 'Sheikh Zayed Mall', unitNumber: 'SZ-04', size: 'Medium', status: 'available', hourlyRate: 15.0, dailyRate: 90.0),
+        Locker(lockerId: 105, locationId: 1, locationName: 'Sheikh Zayed Mall', unitNumber: 'SZ-05', size: 'Large', status: 'available', hourlyRate: 25.0, dailyRate: 150.0),
+      ],
+      2: [ // Cairo Festival City - 35 available
+        Locker(lockerId: 201, locationId: 2, locationName: 'Cairo Festival City', unitNumber: 'CFC-01', size: 'Small', status: 'available', hourlyRate: 12.0, dailyRate: 70.0),
+        Locker(lockerId: 202, locationId: 2, locationName: 'Cairo Festival City', unitNumber: 'CFC-02', size: 'Small', status: 'available', hourlyRate: 12.0, dailyRate: 70.0),
+        Locker(lockerId: 203, locationId: 2, locationName: 'Cairo Festival City', unitNumber: 'CFC-03', size: 'Small', status: 'available', hourlyRate: 12.0, dailyRate: 70.0),
+        Locker(lockerId: 204, locationId: 2, locationName: 'Cairo Festival City', unitNumber: 'CFC-04', size: 'Medium', status: 'available', hourlyRate: 18.0, dailyRate: 100.0),
+        Locker(lockerId: 205, locationId: 2, locationName: 'Cairo Festival City', unitNumber: 'CFC-05', size: 'Medium', status: 'available', hourlyRate: 18.0, dailyRate: 100.0),
+        Locker(lockerId: 206, locationId: 2, locationName: 'Cairo Festival City', unitNumber: 'CFC-06', size: 'Large', status: 'available', hourlyRate: 28.0, dailyRate: 160.0),
+        Locker(lockerId: 207, locationId: 2, locationName: 'Cairo Festival City', unitNumber: 'CFC-07', size: 'Large', status: 'available', hourlyRate: 28.0, dailyRate: 160.0),
+      ],
+      3: [ // Alexandria - 8 available
+        Locker(lockerId: 301, locationId: 3, locationName: 'Alexandria Bibliotheca', unitNumber: 'ALX-01', size: 'Small', status: 'available', hourlyRate: 8.0, dailyRate: 50.0),
+        Locker(lockerId: 302, locationId: 3, locationName: 'Alexandria Bibliotheca', unitNumber: 'ALX-02', size: 'Medium', status: 'available', hourlyRate: 12.0, dailyRate: 75.0),
+        Locker(lockerId: 303, locationId: 3, locationName: 'Alexandria Bibliotheca', unitNumber: 'ALX-03', size: 'Large', status: 'available', hourlyRate: 20.0, dailyRate: 120.0),
+      ],
+      4: [ // Citystars - 42 available
+        Locker(lockerId: 401, locationId: 4, locationName: 'Citystars Heliopolis', unitNumber: 'CS-01', size: 'Small', status: 'available', hourlyRate: 10.0, dailyRate: 60.0),
+        Locker(lockerId: 402, locationId: 4, locationName: 'Citystars Heliopolis', unitNumber: 'CS-02', size: 'Small', status: 'available', hourlyRate: 10.0, dailyRate: 60.0),
+        Locker(lockerId: 403, locationId: 4, locationName: 'Citystars Heliopolis', unitNumber: 'CS-03', size: 'Small', status: 'available', hourlyRate: 10.0, dailyRate: 60.0),
+        Locker(lockerId: 404, locationId: 4, locationName: 'Citystars Heliopolis', unitNumber: 'CS-04', size: 'Medium', status: 'available', hourlyRate: 15.0, dailyRate: 90.0),
+        Locker(lockerId: 405, locationId: 4, locationName: 'Citystars Heliopolis', unitNumber: 'CS-05', size: 'Medium', status: 'available', hourlyRate: 15.0, dailyRate: 90.0),
+        Locker(lockerId: 406, locationId: 4, locationName: 'Citystars Heliopolis', unitNumber: 'CS-06', size: 'Medium', status: 'available', hourlyRate: 15.0, dailyRate: 90.0),
+        Locker(lockerId: 407, locationId: 4, locationName: 'Citystars Heliopolis', unitNumber: 'CS-07', size: 'Large', status: 'available', hourlyRate: 22.0, dailyRate: 130.0),
+        Locker(lockerId: 408, locationId: 4, locationName: 'Citystars Heliopolis', unitNumber: 'CS-08', size: 'Large', status: 'available', hourlyRate: 22.0, dailyRate: 130.0),
+      ],
+      5: [ // Mall of Egypt - 5 available (limited!)
+        Locker(lockerId: 501, locationId: 5, locationName: 'Mall of Egypt', unitNumber: 'MOE-01', size: 'Small', status: 'available', hourlyRate: 15.0, dailyRate: 90.0),
+        Locker(lockerId: 502, locationId: 5, locationName: 'Mall of Egypt', unitNumber: 'MOE-02', size: 'Medium', status: 'available', hourlyRate: 22.0, dailyRate: 130.0),
+      ],
+      6: [ // Maadi - 18 available
+        Locker(lockerId: 601, locationId: 6, locationName: 'Maadi Grand Mall', unitNumber: 'MAA-01', size: 'Small', status: 'available', hourlyRate: 8.0, dailyRate: 50.0),
+        Locker(lockerId: 602, locationId: 6, locationName: 'Maadi Grand Mall', unitNumber: 'MAA-02', size: 'Small', status: 'available', hourlyRate: 8.0, dailyRate: 50.0),
+        Locker(lockerId: 603, locationId: 6, locationName: 'Maadi Grand Mall', unitNumber: 'MAA-03', size: 'Medium', status: 'available', hourlyRate: 12.0, dailyRate: 75.0),
+        Locker(lockerId: 604, locationId: 6, locationName: 'Maadi Grand Mall', unitNumber: 'MAA-04', size: 'Medium', status: 'available', hourlyRate: 12.0, dailyRate: 75.0),
+        Locker(lockerId: 605, locationId: 6, locationName: 'Maadi Grand Mall', unitNumber: 'MAA-05', size: 'Large', status: 'available', hourlyRate: 18.0, dailyRate: 110.0),
+      ],
+    };
+    
     if (locationId != null) {
-      return allLockers.where((l) => l.locationId == locationId).toList();
+      return lockersByLocation[locationId] ?? [];
     }
-    return allLockers;
+    
+    // Return all lockers
+    return lockersByLocation.values.expand((list) => list).toList();
   }
 
   /// Check locker availability for time slot
@@ -381,24 +477,44 @@ class ApiService {
     required DateTime endTime,
     String bookingType = 'Storage',
     String? discountCode,
+    String? locationName,
+    String? unitNumber,
+    String? size,
+    double? totalAmount,
   }) async {
     if (_isDemoMode) {
-      return Booking(
+      // Find the locker details
+      final allLockers = _getMockLockers();
+      final locker = allLockers.firstWhere(
+        (l) => l.lockerId == lockerId,
+        orElse: () => allLockers.first,
+      );
+      
+      final duration = endTime.difference(startTime).inHours;
+      final calcTotal = totalAmount ?? (locker.hourlyRate * duration);
+      
+      final booking = Booking(
         bookingId: DateTime.now().millisecondsSinceEpoch,
         userId: 999,
         lockerId: lockerId,
-        locationName: 'Demo Location',
-        unitNumber: 'DEMO-01',
-        size: 'Medium',
+        locationName: locationName ?? locker.locationName ?? 'Demo Location',
+        unitNumber: unitNumber ?? locker.unitNumber,
+        size: size ?? locker.size,
         startTime: startTime,
         endTime: endTime,
         bookingType: bookingType,
-        subtotalAmount: 50.0,
+        subtotalAmount: calcTotal,
         discountAmount: 0.0,
-        totalAmount: 50.0,
-        status: 'active',
-        qrCode: 'DEMO-QR-${DateTime.now().millisecondsSinceEpoch}',
+        totalAmount: calcTotal,
+        status: 'Active',
+        qrCode: 'LOCKSPOT-${DateTime.now().millisecondsSinceEpoch}',
+        paymentStatus: 'paid',
       );
+      
+      // Store in demo bookings list
+      _demoBookings.add(booking);
+      
+      return booking;
     }
 
     final response = await _request(
@@ -418,7 +534,11 @@ class ApiService {
   /// Get user's bookings
   Future<List<Booking>> getUserBookings({String? status}) async {
     if (_isDemoMode) {
-      return _getMockBookings();
+      final bookings = _getMockBookings();
+      if (status != null) {
+        return bookings.where((b) => b.status.toLowerCase() == status.toLowerCase()).toList();
+      }
+      return bookings;
     }
 
     // Return empty list if not authenticated to avoid 403
@@ -444,43 +564,30 @@ class ApiService {
     }
   }
 
-  /// Mock bookings for demo mode
+  /// Mock bookings for demo mode - stored in memory
+  static final List<Booking> _demoBookings = [];
+
   List<Booking> _getMockBookings() {
-    return [
+    // Return stored demo bookings plus some sample completed ones
+    final sampleCompleted = [
       Booking(
-        bookingId: 1001,
+        bookingId: 9001,
         userId: 999,
-        lockerId: 1,
-        locationName: 'Riyadh Mall',
-        unitNumber: 'A-01',
+        lockerId: 401,
+        locationName: 'Citystars Heliopolis',
+        unitNumber: 'CS-01',
         size: 'Small',
-        startTime: DateTime.now().subtract(const Duration(hours: 2)),
-        endTime: DateTime.now().add(const Duration(hours: 4)),
+        startTime: DateTime.now().subtract(const Duration(days: 3)),
+        endTime: DateTime.now().subtract(const Duration(days: 3)).add(const Duration(hours: 4)),
         bookingType: 'Storage',
-        subtotalAmount: 30.0,
+        subtotalAmount: 40.0,
         discountAmount: 0.0,
-        totalAmount: 30.0,
-        status: 'active',
-        qrCode: 'DEMO-QR-1001',
-        paymentStatus: 'paid',
-      ),
-      Booking(
-        bookingId: 1002,
-        userId: 999,
-        lockerId: 2,
-        locationName: 'Jeddah Central',
-        unitNumber: 'B-02',
-        size: 'Large',
-        startTime: DateTime.now().subtract(const Duration(days: 2)),
-        endTime: DateTime.now().subtract(const Duration(days: 1)),
-        bookingType: 'Storage',
-        subtotalAmount: 75.0,
-        discountAmount: 10.0,
-        totalAmount: 65.0,
-        status: 'completed',
+        totalAmount: 40.0,
+        status: 'Completed',
         paymentStatus: 'paid',
       ),
     ];
+    return [..._demoBookings, ...sampleCompleted];
   }
 
   /// Alias for getUserBookings (for backwards compatibility)
@@ -533,9 +640,21 @@ class ApiService {
   /// Process payment for a booking
   Future<Payment> processPayment({
     required int bookingId,
-    String methodType = 'Cash',
+    String methodType = 'Visa',
     String? cardLastFour,
   }) async {
+    if (_isDemoMode) {
+      // Return a successful mock payment
+      return Payment(
+        paymentId: DateTime.now().millisecondsSinceEpoch,
+        bookingId: bookingId,
+        amount: 0, // Amount is on the booking
+        status: 'Success',
+        paymentDate: DateTime.now(),
+        transactionReference: 'TXN-${DateTime.now().millisecondsSinceEpoch}',
+      );
+    }
+    
     final response = await _request(
       'POST',
       '/payments',

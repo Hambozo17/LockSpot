@@ -1,4 +1,6 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:lockspot/features/lockers/locker_detail_screen.dart';
 import 'package:lockspot/services/api_service.dart';
 import 'package:lockspot/shared/theme/colors.dart';
@@ -19,6 +21,8 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoading = true;
   String? _error;
   final TextEditingController _searchController = TextEditingController();
+  Position? _currentPosition;
+  bool _isGettingLocation = false;
 
   @override
   void initState() {
@@ -48,6 +52,118 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  /// Calculate distance between two coordinates using Haversine formula
+  double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+    const R = 6371.0; // Earth's radius in km
+    final dLat = _toRadians(lat2 - lat1);
+    final dLon = _toRadians(lon2 - lon1);
+    final a = sin(dLat / 2) * sin(dLat / 2) +
+        cos(_toRadians(lat1)) * cos(_toRadians(lat2)) * sin(dLon / 2) * sin(dLon / 2);
+    final c = 2 * atan2(sqrt(a), sqrt(1 - a));
+    return R * c;
+  }
+
+  double _toRadians(double degree) => degree * pi / 180;
+
+  /// Get user's current location
+  Future<void> _getCurrentLocation() async {
+    setState(() => _isGettingLocation = true);
+    
+    try {
+      // Check if location services are enabled
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Please enable location services')),
+          );
+        }
+        setState(() => _isGettingLocation = false);
+        return;
+      }
+
+      // Check permission
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Location permission denied')),
+            );
+          }
+          setState(() => _isGettingLocation = false);
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Location permissions are permanently denied')),
+          );
+        }
+        setState(() => _isGettingLocation = false);
+        return;
+      }
+
+      // Get current position
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.medium),
+      );
+      
+      setState(() {
+        _currentPosition = position;
+        _isGettingLocation = false;
+      });
+
+      // Sort by distance
+      _sortByDistance();
+      
+    } catch (e) {
+      setState(() => _isGettingLocation = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error getting location: $e')),
+        );
+      }
+    }
+  }
+
+  /// Sort locations by distance from current position
+  void _sortByDistance() {
+    if (_currentPosition == null) return;
+    
+    final userLat = _currentPosition!.latitude;
+    final userLon = _currentPosition!.longitude;
+    
+    _filteredLocations.sort((a, b) {
+      final distA = _calculateDistance(
+        userLat, userLon,
+        a.address?.latitude ?? 0, a.address?.longitude ?? 0,
+      );
+      final distB = _calculateDistance(
+        userLat, userLon,
+        b.address?.latitude ?? 0, b.address?.longitude ?? 0,
+      );
+      return distA.compareTo(distB);
+    });
+    
+    setState(() {});
+    
+    if (_filteredLocations.isNotEmpty) {
+      final nearest = _filteredLocations.first;
+      final distance = _calculateDistance(
+        userLat, userLon,
+        nearest.address?.latitude ?? 0, nearest.address?.longitude ?? 0,
+      );
+      setState(() => _selectedLocationId = nearest.locationId);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Nearest: ${nearest.name} (${distance.toStringAsFixed(1)} km away)')),
+      );
+    }
+  }
+
   void _applyFilter() {
     List<LockerLocation> result = List.from(_locations);
     
@@ -62,13 +178,23 @@ class _HomeScreenState extends State<HomeScreen> {
     
     // Apply sorting
     switch (_filterIndex) {
-      case 0: // Near you - sort by available lockers (higher first)
+      case 0: // Near you - sort by distance if we have position, else by available
+        if (_currentPosition != null) {
+          final userLat = _currentPosition!.latitude;
+          final userLon = _currentPosition!.longitude;
+          result.sort((a, b) {
+            final distA = _calculateDistance(userLat, userLon, a.address?.latitude ?? 0, a.address?.longitude ?? 0);
+            final distB = _calculateDistance(userLat, userLon, b.address?.latitude ?? 0, b.address?.longitude ?? 0);
+            return distA.compareTo(distB);
+          });
+        } else {
+          result.sort((a, b) => b.availableLockers.compareTo(a.availableLockers));
+        }
+        break;
+      case 1: // Low price - sort by availability (more available = likely cheaper)
         result.sort((a, b) => b.availableLockers.compareTo(a.availableLockers));
         break;
-      case 1: // Low price - sort by rating (as proxy for value)
-        result.sort((a, b) => a.averageRating.compareTo(b.averageRating));
-        break;
-      case 2: // Availability - sort by availability count
+      case 2: // Availability - sort by availability count descending
         result.sort((a, b) => b.availableLockers.compareTo(a.availableLockers));
         break;
     }
@@ -93,19 +219,12 @@ class _HomeScreenState extends State<HomeScreen> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            ElevatedButton(
-              onPressed: () {
-                // Auto-select first available location
-                if (_filteredLocations.isNotEmpty) {
-                  final bestLocation = _filteredLocations.reduce((a, b) => 
-                    a.availableLockers > b.availableLockers ? a : b);
-                  setState(() => _selectedLocationId = bestLocation.locationId);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Found: ${bestLocation.name} with ${bestLocation.availableLockers} lockers')),
-                  );
-                }
-              },
-              child: const Text('Find lockers near you'),
+            ElevatedButton.icon(
+              onPressed: _isGettingLocation ? null : _getCurrentLocation,
+              icon: _isGettingLocation 
+                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Icon(Icons.my_location),
+              label: Text(_isGettingLocation ? 'Getting location...' : 'Find lockers near you'),
             ),
             const SizedBox(height: 16),
             SingleChildScrollView(
@@ -179,11 +298,24 @@ class _HomeScreenState extends State<HomeScreen> {
                                   itemBuilder: (context, index) {
                                     final location = _filteredLocations[index];
                                     final isSelected = _selectedLocationId == location.locationId;
+                                    
+                                    // Calculate distance if we have user position
+                                    double? distance;
+                                    if (_currentPosition != null && location.address != null) {
+                                      distance = _calculateDistance(
+                                        _currentPosition!.latitude,
+                                        _currentPosition!.longitude,
+                                        location.address!.latitude ?? 0,
+                                        location.address!.longitude ?? 0,
+                                      );
+                                    }
+                                    
                                     return GestureDetector(
                                       onTap: () => setState(() => _selectedLocationId = location.locationId),
                                       child: _LocationCard(
                                         location: location,
                                         isSelected: isSelected,
+                                        distance: distance,
                                       ),
                                     );
                                   },
@@ -217,8 +349,9 @@ class _HomeScreenState extends State<HomeScreen> {
 class _LocationCard extends StatelessWidget {
   final LockerLocation location;
   final bool isSelected;
+  final double? distance;
 
-  const _LocationCard({required this.location, required this.isSelected});
+  const _LocationCard({required this.location, required this.isSelected, this.distance});
 
   @override
   Widget build(BuildContext context) {
@@ -264,7 +397,27 @@ class _LocationCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                Text(location.city),
+                if (distance != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: primaryBrown.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.location_on, size: 14, color: primaryBrown),
+                        const SizedBox(width: 2),
+                        Text(
+                          '${distance!.toStringAsFixed(1)} km',
+                          style: const TextStyle(fontSize: 12, color: primaryBrown, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  Text(location.city),
               ],
             ),
             const SizedBox(height: 8),

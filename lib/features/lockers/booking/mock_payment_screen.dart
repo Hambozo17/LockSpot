@@ -289,7 +289,7 @@ class _MockPaymentScreenState extends State<MockPaymentScreen> {
 
     try {
       final user = _auth.currentUser;
-      if (user == null) throw Exception('User not logged in');
+      if (user == null) throw Exception('Please log in to book a locker');
 
       // First get an available locker at this location with selected size
       final lockers = await _api.getAvailableLockers(
@@ -298,7 +298,7 @@ class _MockPaymentScreenState extends State<MockPaymentScreen> {
       );
 
       if (lockers.isEmpty) {
-        throw Exception('No available lockers of selected size');
+        throw Exception('No available ${widget.selectedSize} lockers at this location');
       }
 
       final locker = lockers.first;
@@ -307,23 +307,34 @@ class _MockPaymentScreenState extends State<MockPaymentScreen> {
       final now = DateTime.now();
       final endTime = now.add(Duration(hours: widget.duration));
 
-      // Create booking via API
+      // Create booking via API with full details
       final booking = await _api.createBooking(
         lockerId: locker.lockerId,
         startTime: now,
         endTime: endTime,
+        locationName: widget.locationName,
+        unitNumber: locker.unitNumber,
+        size: widget.selectedSize,
+        totalAmount: widget.totalPrice,
       );
 
-      // Process payment
-      await _api.processPayment(bookingId: booking.bookingId);
+      // Process payment with card details
+      final cardNumber = _cardNumberController.text.replaceAll(' ', '');
+      final lastFour = cardNumber.length >= 4 ? cardNumber.substring(cardNumber.length - 4) : '0000';
+      
+      await _api.processPayment(
+        bookingId: booking.bookingId,
+        methodType: 'Visa',
+        cardLastFour: lastFour,
+      );
 
       if (mounted) {
         // Show success message first
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Booking confirmed! Your locker has been reserved.'),
+          SnackBar(
+            content: Text('Booking confirmed! Locker ${locker.unitNumber} reserved for ${widget.duration} hours.'),
             backgroundColor: Colors.green,
-            duration: Duration(seconds: 2),
+            duration: const Duration(seconds: 3),
           ),
         );
 
@@ -338,13 +349,13 @@ class _MockPaymentScreenState extends State<MockPaymentScreen> {
     } on ApiException catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Payment failed: ${e.message}')),
+          SnackBar(content: Text('Payment failed: ${e.message}'), backgroundColor: Colors.red),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Payment failed: ${e.toString()}')),
+          SnackBar(content: Text('Error: ${e.toString()}'), backgroundColor: Colors.red),
         );
       }
     } finally {
