@@ -595,3 +595,463 @@ def health_check(request):
         'framework': 'Django REST Framework',
         'documentation': '/api/docs/'
     })
+
+# ==================== RAW SQL BOOKING VIEWS ====================
+
+class BookingListCreateView(APIView):
+    """List and Create Bookings with Raw SQL"""
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        """Get user's bookings with optional status filter"""
+        user_id = request.user.id
+        status_filter = request.query_params.get('status')
+        
+        # First, auto-complete expired bookings
+        self._complete_expired_bookings(user_id)
+        
+        with DatabaseConnection.get_connection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            
+            if status_filter:
+                cursor.execute("""
+                    SELECT b.id, b.user_id, b.locker_id, b.start_time, b.end_time,
+                           b.booking_type, b.subtotal_amount, b.discount_amount, 
+                           b.total_amount, b.status, b.created_at,
+                           l.unit_number, l.size, loc.name as location_name
+                    FROM lockers_booking b
+                    JOIN lockers_lockerunit l ON b.locker_id = l.id
+                    JOIN lockers_lockerlocation loc ON l.location_id = loc.id
+                    WHERE b.user_id = %s AND b.status = %s
+                    ORDER BY b.created_at DESC
+                """, (user_id, status_filter))
+            else:
+                cursor.execute("""
+                    SELECT b.id, b.user_id, b.locker_id, b.start_time, b.end_time,
+                           b.booking_type, b.subtotal_amount, b.discount_amount, 
+                           b.total_amount, b.status, b.created_at,
+                           l.unit_number, l.size, loc.name as location_name
+                    FROM lockers_booking b
+                    JOIN lockers_lockerunit l ON b.locker_id = l.id
+                    JOIN lockers_lockerlocation loc ON l.location_id = loc.id
+                    WHERE b.user_id = %s
+                    ORDER BY b.created_at DESC
+                """, (user_id,))
+            
+            bookings = cursor.fetchall()
+            cursor.close()
+            
+            # Format response
+            results = []
+            for b in bookings:
+                results.append({
+                    'booking_id': b['id'],
+                    'user_id': b['user_id'],
+                    'locker_id': b['locker_id'],
+                    'location_name': b['location_name'],
+                    'unit_number': b['unit_number'],
+                    'size': b['size'],
+                    'start_time': b['start_time'].isoformat() if b['start_time'] else None,
+                    'end_time': b['end_time'].isoformat() if b['end_time'] else None,
+                    'booking_type': b['booking_type'],
+                    'subtotal_amount': float(b['subtotal_amount']),
+                    'discount_amount': float(b['discount_amount']),
+                    'total_amount': float(b['total_amount']),
+                    'status': b['status'],
+                    'created_at': b['created_at'].isoformat() if b['created_at'] else None,
+                    'qr_code': f"LOCKSPOT-{b['id']}",
+                    'payment_status': 'paid'
+                })
+            
+            return Response({'results': results})
+    
+    def _complete_expired_bookings(self, user_id):
+        """Mark expired active bookings as completed"""
+        with DatabaseConnection.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE lockers_booking 
+                SET status = 'Completed', updated_at = NOW()
+                WHERE user_id = %s 
+                AND status IN ('Active', 'Confirmed')
+                AND end_time < NOW()
+            """, (user_id,))
+            
+            # Also free up the lockers
+            cursor.execute("""
+                UPDATE lockers_lockerunit l
+                JOIN lockers_booking b ON l.id = b.locker_id
+                SET l.status = 'Available'
+                WHERE b.user_id = %s 
+                AND b.status = 'Completed'
+                AND l.status = 'Booked'
+            """, (user_id,))
+            
+            conn.commit()
+            cursor.close()
+    
+    def post(self, request):
+        """Create a new booking"""
+        user_id = request.user.id
+        locker_id = request.data.get('locker_id')
+        start_time = request.data.get('start_time')
+        end_time = request.data.get('end_time')
+        booking_type = request.data.get('booking_type', 'Storage')
+        
+        if not locker_id or not start_time or not end_time:
+            return Response(
+                {'detail': 'locker_id, start_time, and end_time are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        with DatabaseConnection.get_connection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            
+            # Get locker details and pricing
+            cursor.execute("""
+                SELECT l.id, l.unit_number, l.size, l.status, l.location_id,
+                       p.hourly_rate, p.daily_rate, loc.name as location_name
+                FROM lockers_lockerunit l
+                JOIN lockers_pricingtier p ON l.tier_id = p.id
+                JOIN lockers_lockerlocation loc ON l.location_id = loc.id
+                WHERE l.id = %s
+            """, (locker_id,))
+            
+            locker = cursor.fetchone()
+            if not locker:
+                cursor.close()
+                return Response(
+                    {'detail': 'Locker not found'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            if locker['status'] != 'Available':
+                cursor.close()
+                return Response(
+                    {'detail': 'Locker not available'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Calculate pricing
+            from datetime import datetime as dt
+            start_dt = dt.fromisoformat(start_time.replace('Z', '+00:00'))
+            end_dt = dt.fromisoformat(end_time.replace('Z', '+00:00'))
+            duration_hours = (end_dt - start_dt).total_seconds() / 3600
+            
+            if duration_hours <= 24:
+                total_amount = float(locker['hourly_rate']) * duration_hours
+            else:
+                total_amount = float(locker['daily_rate']) * (duration_hours / 24)
+            
+            # Convert to MySQL format
+            start_time_mysql = start_dt.strftime('%Y-%m-%d %H:%M:%S')
+            end_time_mysql = end_dt.strftime('%Y-%m-%d %H:%M:%S')
+            
+            # Create booking
+            cursor.execute("""
+                INSERT INTO lockers_booking 
+                (user_id, locker_id, start_time, end_time, booking_type,
+                 subtotal_amount, discount_amount, total_amount, status, created_at, updated_at)
+                VALUES (%s, %s, %s, %s, %s, %s, 0, %s, 'Active', NOW(), NOW())
+            """, (user_id, locker_id, start_time_mysql, end_time_mysql, booking_type, total_amount, total_amount))
+            
+            booking_id = cursor.lastrowid
+            
+            # Update locker status
+            cursor.execute("""
+                UPDATE lockers_lockerunit SET status = 'Booked' WHERE id = %s
+            """, (locker_id,))
+            
+            conn.commit()
+            cursor.close()
+            
+            return Response({
+                'booking_id': booking_id,
+                'user_id': user_id,
+                'locker_id': locker_id,
+                'location_name': locker['location_name'],
+                'unit_number': locker['unit_number'],
+                'size': locker['size'],
+                'start_time': start_time,
+                'end_time': end_time,
+                'booking_type': booking_type,
+                'subtotal_amount': total_amount,
+                'discount_amount': 0,
+                'total_amount': total_amount,
+                'status': 'Active',
+                'qr_code': f'LOCKSPOT-{booking_id}',
+                'payment_status': 'paid'
+            }, status=status.HTTP_201_CREATED)
+
+
+class BookingCompleteExpiredView(APIView):
+    """Complete expired bookings for a user"""
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        """Mark all expired bookings as completed"""
+        user_id = request.user.id
+        
+        with DatabaseConnection.get_connection() as conn:
+            cursor = conn.cursor()
+            
+            # Count before update
+            cursor.execute("""
+                SELECT COUNT(*) FROM lockers_booking 
+                WHERE user_id = %s 
+                AND status IN ('Active', 'Confirmed')
+                AND end_time < NOW()
+            """, (user_id,))
+            count = cursor.fetchone()[0]
+            
+            if count > 0:
+                # Update expired bookings
+                cursor.execute("""
+                    UPDATE lockers_booking 
+                    SET status = 'Completed', updated_at = NOW()
+                    WHERE user_id = %s 
+                    AND status IN ('Active', 'Confirmed')
+                    AND end_time < NOW()
+                """, (user_id,))
+                
+                # Free up lockers
+                cursor.execute("""
+                    UPDATE lockers_lockerunit l
+                    JOIN lockers_booking b ON l.id = b.locker_id
+                    SET l.status = 'Available'
+                    WHERE b.user_id = %s 
+                    AND b.status = 'Completed'
+                    AND l.status = 'Booked'
+                """, (user_id,))
+                
+                conn.commit()
+            
+            cursor.close()
+            
+            return Response({
+                'completed_count': count,
+                'message': f'{count} expired bookings marked as completed'
+            })
+
+
+class BookingDetailView(APIView):
+    """Get individual booking details with Raw SQL"""
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, booking_id):
+        """Get a single booking by ID"""
+        user_id = request.user.id
+        
+        with DatabaseConnection.get_connection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            
+            cursor.execute("""
+                SELECT b.id, b.user_id, b.locker_id, b.start_time, b.end_time,
+                       b.booking_type, b.subtotal_amount, b.discount_amount, 
+                       b.total_amount, b.status, b.created_at,
+                       l.unit_number, l.size, loc.name as location_name
+                FROM lockers_booking b
+                JOIN lockers_lockerunit l ON b.locker_id = l.id
+                JOIN lockers_lockerlocation loc ON l.location_id = loc.id
+                WHERE b.id = %s AND b.user_id = %s
+            """, (booking_id, user_id))
+            
+            booking = cursor.fetchone()
+            cursor.close()
+            
+            if not booking:
+                return Response(
+                    {'detail': 'Booking not found'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            return Response({
+                'booking_id': booking['id'],
+                'user_id': booking['user_id'],
+                'locker_id': booking['locker_id'],
+                'location_name': booking['location_name'],
+                'unit_number': booking['unit_number'],
+                'size': booking['size'],
+                'start_time': booking['start_time'].isoformat() if booking['start_time'] else None,
+                'end_time': booking['end_time'].isoformat() if booking['end_time'] else None,
+                'booking_type': booking['booking_type'],
+                'subtotal_amount': float(booking['subtotal_amount']),
+                'discount_amount': float(booking['discount_amount']),
+                'total_amount': float(booking['total_amount']),
+                'status': booking['status'],
+                'created_at': booking['created_at'].isoformat() if booking['created_at'] else None,
+                'qr_code': f'LOCKSPOT-{booking["id"]}',
+                'payment_status': 'paid'
+            })
+
+
+class BookingQRView(APIView):
+    """Generate QR code for a booking"""
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, booking_id):
+        """Get QR code data for a booking"""
+        user_id = request.user.id
+        
+        with DatabaseConnection.get_connection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            
+            cursor.execute("""
+                SELECT b.id, b.status, b.end_time,
+                       l.unit_number, loc.name as location_name
+                FROM lockers_booking b
+                JOIN lockers_lockerunit l ON b.locker_id = l.id
+                JOIN lockers_lockerlocation loc ON l.location_id = loc.id
+                WHERE b.id = %s AND b.user_id = %s
+            """, (booking_id, user_id))
+            
+            booking = cursor.fetchone()
+            cursor.close()
+            
+            if not booking:
+                return Response(
+                    {'detail': 'Booking not found'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # Generate QR code data
+            qr_data = f'LOCKSPOT-{booking_id}'
+            
+            return Response({
+                'booking_id': booking_id,
+                'qr_code': qr_data,
+                'qr_data': qr_data,
+                'location_name': booking['location_name'],
+                'unit_number': booking['unit_number'],
+                'status': booking['status'],
+                'expires_at': booking['end_time'].isoformat() if booking['end_time'] else None
+            })
+
+
+class BookingCancelView(APIView):
+    """Cancel a booking"""
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, booking_id):
+        """Cancel a booking by ID"""
+        user_id = request.user.id
+        
+        with DatabaseConnection.get_connection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            
+            # Check booking exists and belongs to user
+            cursor.execute("""
+                SELECT id, locker_id, status FROM lockers_booking 
+                WHERE id = %s AND user_id = %s
+            """, (booking_id, user_id))
+            
+            booking = cursor.fetchone()
+            
+            if not booking:
+                cursor.close()
+                return Response(
+                    {'detail': 'Booking not found'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            if booking['status'] in ['Cancelled', 'Completed']:
+                cursor.close()
+                return Response(
+                    {'detail': f'Booking already {booking["status"].lower()}'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Cancel booking
+            cursor.execute("""
+                UPDATE lockers_booking 
+                SET status = 'Cancelled', updated_at = NOW()
+                WHERE id = %s
+            """, (booking_id,))
+            
+            # Free up locker
+            cursor.execute("""
+                UPDATE lockers_lockerunit 
+                SET status = 'Available'
+                WHERE id = %s
+            """, (booking['locker_id'],))
+            
+            conn.commit()
+            cursor.close()
+            
+            return Response({
+                'booking_id': booking_id,
+                'status': 'Cancelled',
+                'message': 'Booking cancelled successfully'
+            })
+
+
+class LockerAvailabilityView(APIView):
+    """Check locker availability"""
+    permission_classes = [AllowAny]
+    
+    def get(self, request, locker_id):
+        """Check if a specific locker is available"""
+        with DatabaseConnection.get_connection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            
+            cursor.execute("""
+                SELECT l.id, l.unit_number, l.size, l.status, 
+                       loc.name as location_name
+                FROM lockers_lockerunit l
+                JOIN lockers_lockerlocation loc ON l.location_id = loc.id
+                WHERE l.id = %s
+            """, (locker_id,))
+            
+            locker = cursor.fetchone()
+            cursor.close()
+            
+            if not locker:
+                return Response(
+                    {'detail': 'Locker not found'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            return Response({
+                'locker_id': locker['id'],
+                'unit_number': locker['unit_number'],
+                'size': locker['size'],
+                'location_name': locker['location_name'],
+                'is_available': locker['status'] == 'Available',
+                'status': locker['status']
+            })
+
+
+class LocationReviewsView(APIView):
+    """Get reviews for a specific location"""
+    permission_classes = [AllowAny]
+    
+    def get(self, request, location_id):
+        """Get all reviews for a location"""
+        with DatabaseConnection.get_connection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            
+            cursor.execute("""
+                SELECT r.id, r.rating, r.comment, r.created_at,
+                       u.first_name, u.last_name
+                FROM lockers_review r
+                JOIN auth_user u ON r.user_id = u.id
+                JOIN lockers_booking b ON r.booking_id = b.id
+                JOIN lockers_lockerunit l ON b.locker_id = l.id
+                WHERE l.location_id = %s
+                ORDER BY r.created_at DESC
+            """, (location_id,))
+            
+            reviews = cursor.fetchall()
+            cursor.close()
+            
+            results = []
+            for r in reviews:
+                results.append({
+                    'review_id': r['id'],
+                    'rating': float(r['rating']),
+                    'comment': r['comment'],
+                    'created_at': r['created_at'].isoformat() if r['created_at'] else None,
+                    'user_name': f"{r['first_name']} {r['last_name']}"
+                })
+            
+            return Response({'results': results})

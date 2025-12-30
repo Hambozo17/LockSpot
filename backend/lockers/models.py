@@ -38,7 +38,7 @@ class User(AbstractUser):
     email = models.EmailField(unique=True)
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=50)
-    phone = models.CharField(max_length=20, unique=True)
+    phone = models.CharField(max_length=20, null=True, blank=True)  # Nullable, not unique
     user_type = models.CharField(max_length=10, choices=UserType.choices, default=UserType.CUSTOMER)
     is_verified = models.BooleanField(default=False)
     profile_image = models.ImageField(upload_to='profiles/', null=True, blank=True)
@@ -51,6 +51,7 @@ class User(AbstractUser):
     REQUIRED_FIELDS = ['first_name', 'last_name', 'phone']
     
     class Meta:
+        db_table = 'auth_user'  # Use existing auth_user table
         verbose_name = 'User'
         verbose_name_plural = 'Users'
         ordering = ['-created_at']
