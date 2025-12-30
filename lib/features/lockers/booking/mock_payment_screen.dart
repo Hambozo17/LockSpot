@@ -9,6 +9,7 @@ class MockPaymentScreen extends StatefulWidget {
   final String selectedSize;
   final int duration;
   final double totalPrice;
+  final bool isTestDuration;
 
   const MockPaymentScreen({
     super.key,
@@ -17,6 +18,7 @@ class MockPaymentScreen extends StatefulWidget {
     required this.selectedSize,
     required this.duration,
     required this.totalPrice,
+    this.isTestDuration = false,
   });
 
   @override
@@ -305,7 +307,9 @@ class _MockPaymentScreenState extends State<MockPaymentScreen> {
 
       // Calculate booking times
       final now = DateTime.now();
-      final endTime = now.add(Duration(hours: widget.duration));
+      final endTime = widget.isTestDuration 
+          ? now.add(const Duration(minutes: 5)) // Test mode: 5 minutes
+          : now.add(Duration(hours: widget.duration)); // Normal mode
 
       // Create booking via API with full details
       final booking = await _api.createBooking(

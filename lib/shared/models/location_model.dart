@@ -25,4 +25,15 @@ class Location {
       sizes: data['sizes'] as Map<String, dynamic>? ?? {},
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'name': name,
+      'distance': distance,
+      'price': price,
+      'availability': availability,
+      'imageUrl': imageUrl,
+      'sizes': sizes,
+    };
+  }
 }

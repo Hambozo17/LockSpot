@@ -27,13 +27,12 @@ class ApiService {
   /// Get current user ID
   int? get currentUserId => _currentUserId;
 
-  /// ALWAYS use demo mode for now (backend not fully configured)
-  /// This ensures all users (demo or signup) can test the full flow
-  bool get isDemoMode => true; // Force demo mode for all users
+  /// Demo mode is only for demo users - real users connect to backend
+  bool get isDemoMode => _isDemoMode;
 
   /// Check if in demo mode (async, from storage)
   Future<bool> checkDemoMode() async {
-    return true; // Always demo mode
+    return _isDemoMode;
   }
 
   /// Set demo mode
@@ -873,6 +872,22 @@ class Location {
       averageRating: (json['average_rating'] ?? 0).toDouble(),
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'location_id': locationId,
+      'name': name,
+      'description': description,
+      'image_url': imageUrl,
+      'operating_hours_start': operatingHoursStart,
+      'operating_hours_end': operatingHoursEnd,
+      'is_active': isActive,
+      'address': address?.toJson(),
+      'available_lockers': availableLockers,
+      'total_lockers': totalLockers,
+      'average_rating': averageRating,
+    };
+  }
 }
 
 // Type alias for backward compatibility
@@ -918,6 +933,19 @@ class LocationAddress {
       latitude: parseLat,
       longitude: parseLng,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'address_id': addressId,
+      'street_address': streetAddress,
+      'city': city,
+      'state': state,
+      'zip_code': zipCode,
+      'country': country,
+      'latitude': latitude,
+      'longitude': longitude,
+    };
   }
 }
 
@@ -1060,6 +1088,27 @@ class Booking {
       paymentStatus: json['payment_status'],
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'booking_id': bookingId,
+      'user_id': userId,
+      'locker_id': lockerId,
+      'location_name': locationName,
+      'unit_number': unitNumber,
+      'size': size,
+      'start_time': startTime.toIso8601String(),
+      'end_time': endTime.toIso8601String(),
+      'booking_type': bookingType,
+      'subtotal_amount': subtotalAmount,
+      'discount_amount': discountAmount,
+      'total_amount': totalAmount,
+      'status': status,
+      'created_at': createdAt?.toIso8601String(),
+      'qr_code': qrCode,
+      'payment_status': paymentStatus,
+    };
+  }
 }
 
 class Payment {
@@ -1090,6 +1139,17 @@ class Payment {
           : null,
       transactionReference: json['transaction_reference'],
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'payment_id': paymentId,
+      'booking_id': bookingId,
+      'amount': amount,
+      'status': status,
+      'payment_date': paymentDate?.toIso8601String(),
+      'transaction_reference': transactionReference,
+    };
   }
 }
 

@@ -17,6 +17,7 @@ class _LockerDetailScreenState extends State<LockerDetailScreen> {
   final ApiService _api = ApiService();
   String? _selectedSize;
   int _selectedHours = 1;
+  bool _useTestDuration = false; // 5-minute test mode
   
   LockerLocation? _location;
   List<LockerUnit> _lockers = [];
@@ -263,7 +264,7 @@ class _LockerDetailScreenState extends State<LockerDetailScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: _presetDurations.map((hours) {
-                        final isSelected = _selectedHours == hours;
+                        final isSelected = _selectedHours == hours && !_useTestDuration;
                         return Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 4.0),
                           child: ChoiceChip(
@@ -278,12 +279,60 @@ class _LockerDetailScreenState extends State<LockerDetailScreen> {
                             onSelected: (_) {
                               setState(() {
                                 _selectedHours = hours;
+                                _useTestDuration = false;
                               });
                             },
                           ),
                         );
                       }).toList(),
                     ),
+                    // Test duration toggle (1 minute for demo)
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.amber[50],
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.amber[700]!, width: 1),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.science, color: Colors.amber[900], size: 20),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Test Mode (5 min)',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(width: 8),
+                          Switch(
+                            value: _useTestDuration,
+                            activeColor: Colors.amber[700],
+                            onChanged: (value) {
+                              setState(() {
+                                _useTestDuration = value;
+                                if (value) {
+                                  _selectedHours = 1;
+                                }
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (_useTestDuration)
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Text(
+                          '⚠️ Booking will expire in 1 minute for testing',
+                          style: TextStyle(
+                            color: Colors.amber[900],
+                            fontSize: 12,
+                            fontStyle: FontStyle.italic,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -308,6 +357,7 @@ class _LockerDetailScreenState extends State<LockerDetailScreen> {
                               selectedSize: _selectedSize!,
                               duration: _selectedHours,
                               totalPrice: totalPrice,
+                              isTestDuration: _useTestDuration,
                             ),
                           ),
                         );

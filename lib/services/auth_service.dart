@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:lockspot/services/api_service.dart';
+import 'package:lockspot/services/cache_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// User model for the app (replaces Firebase User)
@@ -35,6 +36,7 @@ class AppUser {
 
 class AuthService extends ChangeNotifier {
   final ApiService _api = ApiService();
+  final CacheService _cache = CacheService();
   AppUser? _currentUser;
   bool _isLoading = true;
 
@@ -76,6 +78,7 @@ class AuthService extends ChangeNotifier {
         );
         // Set current user ID for user-specific data
         _api.setCurrentUserId(_currentUser!.id);
+        await _cache.setUserId(_currentUser!.id); // Set cache user ID
         _authStateController.add(_currentUser);
       }
     } catch (e) {
@@ -116,8 +119,9 @@ class AuthService extends ChangeNotifier {
         isVerified: response.user.isVerified,
       );
 
-      // Set current user ID for user-specific data
+      // Set user ID in API and cache for user-specific data
       _api.setCurrentUserId(_currentUser!.id);
+      await _cache.setUserId(_currentUser!.id);
 
       _authStateController.add(_currentUser);
       notifyListeners();
@@ -145,6 +149,7 @@ class AuthService extends ChangeNotifier {
 
     // Set current user ID for user-specific data
     _api.setCurrentUserId(_currentUser!.id);
+    await _cache.setUserId(_currentUser!.id);
 
     _authStateController.add(_currentUser);
     notifyListeners();
@@ -183,6 +188,7 @@ class AuthService extends ChangeNotifier {
   /// Sign out
   Future<void> signOut() async {
     await _clearStoredAuth();
+    await _cache.clearUserData(); // Clear cached user data
     _api.clearUserData(); // Clear user-specific data
     _currentUser = null;
     _authStateController.add(null);

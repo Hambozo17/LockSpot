@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:lockspot/features/lockers/active_rental_detail_screen.dart';
 import 'package:lockspot/services/api_service.dart';
 import 'package:lockspot/services/auth_service.dart';
+import 'package:lockspot/services/cache_service.dart';
 import 'package:lockspot/shared/theme/colors.dart';
 
 class ActiveRentalScreen extends StatefulWidget {
@@ -15,15 +16,55 @@ class ActiveRentalScreen extends StatefulWidget {
 class _ActiveRentalScreenState extends State<ActiveRentalScreen> {
   final ApiService _api = ApiService();
   final AuthService _auth = AuthService();
+  final CacheService _cache = CacheService();
   List<Booking> _bookings = [];
   bool _isLoading = true;
   String? _error;
+  Timer? _expirationCheckTimer;
 
   @override
   void initState() {
     super.initState();
+    // ALWAYS load from API - fresh data on every navigation
     _loadBookings();
+    // Check for expired bookings every 30 seconds
+    _expirationCheckTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      _checkForExpiredBookings();
+    });
   }
+
+  @override
+  void dispose() {
+    _expirationCheckTimer?.cancel();
+    super.dispose();
+  }
+
+  // Check if any bookings have expired
+  void _checkForExpiredBookings() {
+    final now = DateTime.now();
+    final expiredBookings = _bookings.where((b) => b.endTime.isBefore(now)).toList();
+    
+    if (expiredBookings.isNotEmpty) {
+      setState(() {
+        _bookings = _bookings.where((b) => b.endTime.isAfter(now)).toList();
+      });
+      
+      // Update cache
+      _cache.saveActiveBookings(_bookings);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${expiredBookings.length} booking(s) expired! Check History.'),
+            backgroundColor: Colors.orange,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    }
+  }
+
+
 
   Future<void> _loadBookings() async {
     if (_auth.currentUser == null) {
@@ -39,20 +80,58 @@ class _ActiveRentalScreenState extends State<ActiveRentalScreen> {
       _error = null;
     });
 
+    print('🔄 Loading active bookings from API...');
+    
+    // ALWAYS fetch from API - no cache loading on init
     try {
       final bookings = await _api.getMyBookings(status: 'Active');
-      // Also get confirmed bookings
       final confirmedBookings = await _api.getMyBookings(status: 'Confirmed');
       
+      final allBookings = [...bookings, ...confirmedBookings];
+      print('📥 Received ${allBookings.length} bookings from API');
+      
+      // Filter out expired bookings (moved to history)
+      final now = DateTime.now();
+      final activeBookings = allBookings.where((b) => b.endTime.isAfter(now)).toList();
+      print('✅ Found ${activeBookings.length} active bookings (${allBookings.length - activeBookings.length} expired)');
+      
+      // Check if any bookings expired and notify user
+      final expiredCount = allBookings.length - activeBookings.length;
+      if (expiredCount > 0 && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$expiredCount booking(s) expired and moved to history'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+      
+      // Save to cache as backup (in case network fails next time)
+      await _cache.saveActiveBookings(activeBookings);
+      
       setState(() {
-        _bookings = [...bookings, ...confirmedBookings];
+        _bookings = activeBookings;
         _isLoading = false;
       });
     } catch (e) {
-      setState(() {
-        _error = e.toString();
-        _isLoading = false;
-      });
+      print('❌ API failed: $e');
+      // Only on network error, try cache as fallback
+      final cachedBookings = await _cache.getActiveBookings();
+      if (cachedBookings != null && cachedBookings.isNotEmpty) {
+        print('📦 Using cached data (${cachedBookings.length} bookings)');
+        final now = DateTime.now();
+        final activeBookings = cachedBookings.where((b) => b.endTime.isAfter(now)).toList();
+        setState(() {
+          _bookings = activeBookings;
+          _isLoading = false;
+        });
+      } else {
+        print('💥 No cache available');
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -84,18 +163,32 @@ class _ActiveRentalScreenState extends State<ActiveRentalScreen> {
                   ),
                 )
               : _bookings.isEmpty
-                  ? const Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                  ? RefreshIndicator(
+                      onRefresh: _loadBookings,
+                      child: ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
                         children: [
-                          Icon(Icons.inbox_outlined, size: 100, color: Colors.grey),
-                          SizedBox(height: 16),
-                          Text(
-                            'No active rentals',
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          SizedBox(height: MediaQuery.of(context).size.height * 0.3),
+                          const Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.inbox_outlined, size: 100, color: Colors.grey),
+                                SizedBox(height: 16),
+                                Text(
+                                  'No active rentals',
+                                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                                ),
+                                SizedBox(height: 8),
+                                Text('Your active locker rentals will appear here.'),
+                                SizedBox(height: 16),
+                                Text(
+                                  'Pull down to refresh',
+                                  style: TextStyle(fontSize: 14, color: Colors.grey),
+                                ),
+                              ],
+                            ),
                           ),
-                          SizedBox(height: 8),
-                          Text('Your active locker rentals will appear here.'),
                         ],
                       ),
                     )

@@ -13,6 +13,7 @@ from django.db import transaction
 from django.db.models import Q
 from datetime import datetime, timedelta
 import uuid
+import hashlib
 
 from lockers.models import (
     User, LockerLocation, LockerUnit, PricingTier, Discount,
@@ -29,65 +30,171 @@ from .serializers import (
     QRCodeSerializer, GenerateQRSerializer,
     NotificationSerializer
 )
+
+# Import raw SQL functions
+from db_utils import DatabaseConnection
 from .authentication import create_access_token, get_token_expiration_seconds
 
 
 # ==================== AUTH VIEWS ====================
 
 class RegisterView(APIView):
-    """User Registration"""
+    """User Registration with MySQL"""
     permission_classes = [AllowAny]
     
     def post(self, request):
-        serializer = UserRegistrationSerializer(data=request.data)
-        if serializer.is_valid():
-            user = serializer.save()
-            token = create_access_token(user)
-            
-            return Response({
-                'access_token': token,
-                'token_type': 'bearer',
-                'expires_in': get_token_expiration_seconds(),
-                'user': UserSerializer(user).data
-            }, status=status.HTTP_201_CREATED)
+        email = request.data.get('email')
+        password = request.data.get('password')
+        first_name = request.data.get('first_name', '')
+        last_name = request.data.get('last_name', '')
+        phone = request.data.get('phone_number', '') or request.data.get('phone', '')
         
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        # Handle empty phone - convert to None for database
+        if not phone or phone.strip() == '':
+            phone = None
+        
+        # Validate required fields
+        if not email or not password:
+            return Response(
+                {'detail': 'Email and password are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            # Check if user already exists and create new user
+            with DatabaseConnection.get_connection() as conn:
+                cursor = conn.cursor(dictionary=True)
+                
+                cursor.execute("SELECT id FROM auth_user WHERE email = %s", (email,))
+                if cursor.fetchone():
+                    cursor.close()
+                    return Response(
+                        {'detail': 'User with this email already exists'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                
+                # Hash password
+                hashed_password = hashlib.sha256(password.encode()).hexdigest()
+                
+                # Insert new user
+                cursor.execute("""
+                    INSERT INTO auth_user 
+                    (password, email, first_name, last_name, phone, user_type, 
+                     is_verified, is_staff, is_superuser, is_active, created_at, updated_at)
+                    VALUES (%s, %s, %s, %s, %s, 'Customer', TRUE, FALSE, FALSE, TRUE, NOW(), NOW())
+                """, (hashed_password, email, first_name, last_name, phone))
+                
+                user_id = cursor.lastrowid
+                conn.commit()
+                
+                # Fetch created user
+                cursor.execute("""
+                    SELECT id, email, first_name, last_name, phone, user_type, created_at
+                    FROM auth_user WHERE id = %s
+                """, (user_id,))
+                user_data = cursor.fetchone()
+                cursor.close()
+                
+                # Create mock user object for token
+                class MockUser:
+                    def __init__(self, data):
+                        self.id = data['id']
+                        self.email = data['email']
+                        self.user_type = data['user_type']
+                
+                user = MockUser(user_data)
+                token = create_access_token(user)
+                
+                return Response({
+                    'access_token': token,
+                    'token_type': 'bearer',
+                    'expires_in': get_token_expiration_seconds(),
+                    'user': {
+                        'id': user_data['id'],
+                        'email': user_data['email'],
+                        'first_name': user_data['first_name'],
+                        'last_name': user_data['last_name'],
+                        'phone': user_data['phone']
+                    }
+                }, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response(
+                {'detail': f'Registration failed: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 class LoginView(APIView):
-    """User Login"""
+    """User Login with MySQL"""
     permission_classes = [AllowAny]
     
     def post(self, request):
-        serializer = UserLoginSerializer(data=request.data)
-        if serializer.is_valid():
-            email = serializer.validated_data['email']
-            password = serializer.validated_data['password']
+        email = request.data.get('email')
+        password = request.data.get('password')
+        
+        if not email or not password:
+            return Response(
+                {'detail': 'Email and password are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        with DatabaseConnection.get_connection() as conn:
+            cursor = conn.cursor(dictionary=True)
             
-            try:
-                user = User.objects.get(email=email)
-            except User.DoesNotExist:
+            # Get user by email
+            cursor.execute("""
+                SELECT id, email, password, first_name, last_name, phone, user_type, is_active
+                FROM auth_user WHERE email = %s
+            """, (email,))
+            
+            user_data = cursor.fetchone()
+            
+            if not user_data:
+                cursor.close()
                 return Response(
                     {'detail': 'Invalid email or password'},
                     status=status.HTTP_401_UNAUTHORIZED
                 )
             
-            if not user.check_password(password):
+            # Verify password
+            hashed_password = hashlib.sha256(password.encode()).hexdigest()
+            if user_data['password'] != hashed_password:
+                cursor.close()
                 return Response(
                     {'detail': 'Invalid email or password'},
                     status=status.HTTP_401_UNAUTHORIZED
                 )
             
+            # Update last login
+            cursor.execute("""
+                UPDATE auth_user SET last_login = NOW() WHERE id = %s
+            """, (user_data['id'],))
+            conn.commit()
+            
+            cursor.close()
+            
+            # Create mock user object for token
+            class MockUser:
+                def __init__(self, data):
+                    self.id = data['id']
+                    self.email = data['email']
+                    self.user_type = data['user_type']
+            
+            user = MockUser(user_data)
             token = create_access_token(user)
             
             return Response({
                 'access_token': token,
                 'token_type': 'bearer',
                 'expires_in': get_token_expiration_seconds(),
-                'user': UserSerializer(user).data
+                'user': {
+                    'id': user_data['id'],
+                    'email': user_data['email'],
+                    'first_name': user_data['first_name'],
+                    'last_name': user_data['last_name'],
+                    'phone': user_data['phone']
+                }
             })
-        
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class ProfileView(APIView):

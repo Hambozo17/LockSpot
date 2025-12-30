@@ -18,18 +18,19 @@ class _MainScreenState extends State<MainScreen> {
   late int _selectedIndex;
   late final PageController _pageController;
 
-  final List<Widget> _pages = [
-    const HomeScreen(),
-    const ActiveRentalScreen(),
-    const HistoryScreen(),
-    const ProfileScreen(),
-  ];
+  late final List<Widget> _pages;
 
   @override
   void initState() {
     super.initState();
     _selectedIndex = widget.initialIndex;
     _pageController = PageController(initialPage: widget.initialIndex);
+    _pages = [
+      const HomeScreen(),
+      const ActiveRentalScreen(),
+      const HistoryScreen(),
+      const ProfileScreen(),
+    ];
   }
 
   @override
@@ -52,7 +53,9 @@ class _MainScreenState extends State<MainScreen> {
     return Scaffold(
       body: PageView(
         controller: _pageController,
-        onPageChanged: (index) => setState(() => _selectedIndex = index),
+        onPageChanged: (index) {
+          setState(() => _selectedIndex = index);
+        },
         children: _pages,
       ),
       bottomNavigationBar: BottomNavigationBar(

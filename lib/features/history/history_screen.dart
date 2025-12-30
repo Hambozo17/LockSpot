@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lockspot/services/api_service.dart';
 import 'package:lockspot/services/auth_service.dart';
+import 'package:lockspot/services/cache_service.dart';
 import 'package:lockspot/shared/theme/colors.dart';
 
 class HistoryScreen extends StatefulWidget {
@@ -14,6 +15,7 @@ class _HistoryScreenState extends State<HistoryScreen>
     with AutomaticKeepAliveClientMixin {
   final ApiService _api = ApiService();
   final AuthService _auth = AuthService();
+  final CacheService _cache = CacheService();
   List<Booking> _bookings = [];
   bool _isLoading = true;
   String? _error;
@@ -42,17 +44,37 @@ class _HistoryScreenState extends State<HistoryScreen>
       _error = null;
     });
 
+    print('🔄 Loading history from API...');
+    
+    // ALWAYS fetch from API - fresh data on every navigation
     try {
       final bookings = await _api.getMyBookings(status: 'Completed');
+      print('📥 Received ${bookings.length} completed bookings from API');
+      
+      // Save to cache as backup
+      await _cache.saveCompletedBookings(bookings);
+      
       setState(() {
         _bookings = bookings;
         _isLoading = false;
       });
     } catch (e) {
-      setState(() {
-        _error = e.toString();
-        _isLoading = false;
-      });
+      print('❌ API failed: $e');
+      // Only on network error, try cache as fallback
+      final cachedBookings = await _cache.getCompletedBookings();
+      if (cachedBookings != null && cachedBookings.isNotEmpty) {
+        print('📦 Using cached data (${cachedBookings.length} bookings)');
+        setState(() {
+          _bookings = cachedBookings;
+          _isLoading = false;
+        });
+      } else {
+        print('💥 No cache available');
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -122,21 +144,45 @@ class _HistoryScreenState extends State<HistoryScreen>
                         ),
                       )
                     : _bookings.isEmpty
-                        ? const Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
+                        ? RefreshIndicator(
+                            onRefresh: _loadHistory,
+                            child: ListView(
+                              physics: const AlwaysScrollableScrollPhysics(),
                               children: [
-                                Icon(Icons.history, size: 100, color: Colors.grey),
-                                SizedBox(height: 16),
-                                Text(
-                                  'No rental history',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
+                                SizedBox(height: MediaQuery.of(context).size.height * 0.3),
+                                const Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.history, size: 100, color: Colors.grey),
+                                      SizedBox(height: 16),
+                                      Text(
+                                        'No rental history',
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      SizedBox(height: 8),
+                                      Padding(
+                                        padding: EdgeInsets.symmetric(horizontal: 32),
+                                        child: Text(
+                                          'Bookings appear here when:\n'
+                                          '• Rental time expires\n'
+                                          '• You complete a booking\n'
+                                          '• Booking is cancelled',
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(color: Colors.grey),
+                                        ),
+                                      ),
+                                      SizedBox(height: 16),
+                                      Text(
+                                        'Pull down to refresh',
+                                        style: TextStyle(fontSize: 14, color: Colors.grey),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                                SizedBox(height: 8),
-                                Text('Your completed rentals will appear here.'),
                               ],
                             ),
                           )
