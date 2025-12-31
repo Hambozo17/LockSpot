@@ -1,52 +1,63 @@
 """
-API URL Configuration
+API URL Configuration - 100% Raw SQL Implementation
+No Django ORM ViewSets
 """
 
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
+from django.urls import path
 from .views import (
+    # Auth
     RegisterView, LoginView, ProfileView,
-    LocationViewSet, LockerViewSet, BookingViewSet,
-    DiscountView, ReviewViewSet, NotificationViewSet,
-    health_check, BookingListCreateView, BookingCompleteExpiredView,
-    BookingDetailView, BookingQRView, BookingCancelView,
-    LockerAvailabilityView, LocationReviewsView
+    # Locations
+    LocationListView, LocationDetailView, LocationPricingView,
+    # Lockers
+    LockerListView, LockerAvailabilityView,
+    # Bookings
+    BookingListCreateView, BookingDetailView, BookingQRView, BookingCancelView,
+    # Reviews
+    ReviewListCreateView, LocationReviewsView,
+    # Notifications
+    NotificationListView, NotificationMarkReadView, NotificationMarkAllReadView,
+    # Discounts
+    DiscountView,
+    # Health
+    health_check
 )
 
-router = DefaultRouter()
-router.register(r'locations', LocationViewSet, basename='location')
-router.register(r'lockers', LockerViewSet, basename='locker')
-# Keep old booking routes for compatibility
-router.register(r'bookings-old', BookingViewSet, basename='booking-old')
-router.register(r'reviews', ReviewViewSet, basename='review')
-router.register(r'notifications', NotificationViewSet, basename='notification')
-
 urlpatterns = [
-    # Health
+    # Health Check
     path('', health_check, name='health'),
     path('health/', health_check, name='health_check'),
     
-    # Auth
+    # ==================== AUTH ====================
     path('auth/register/', RegisterView.as_view(), name='register'),
     path('auth/login/', LoginView.as_view(), name='login'),
     path('auth/me/', ProfileView.as_view(), name='profile'),
     
-    # Bookings - Raw SQL endpoints
-    path('bookings/', BookingListCreateView.as_view(), name='bookings'),
-    path('bookings/complete-expired/', BookingCompleteExpiredView.as_view(), name='complete-expired'),
+    # ==================== LOCATIONS ====================
+    path('locations/', LocationListView.as_view(), name='location-list'),
+    path('locations/<int:location_id>/', LocationDetailView.as_view(), name='location-detail'),
+    path('locations/<int:location_id>/pricing/', LocationPricingView.as_view(), name='location-pricing'),
+    path('locations/<int:location_id>/reviews/', LocationReviewsView.as_view(), name='location-reviews'),
+    
+    # ==================== LOCKERS ====================
+    path('lockers/', LockerListView.as_view(), name='locker-list'),
+    path('lockers/available/', LockerListView.as_view(), name='locker-available'),  # Alias for Flutter app
+    path('lockers/<int:locker_id>/availability/', LockerAvailabilityView.as_view(), name='locker-availability'),
+    
+    # ==================== BOOKINGS ====================
+    path('bookings/', BookingListCreateView.as_view(), name='booking-list-create'),
     path('bookings/<int:booking_id>/', BookingDetailView.as_view(), name='booking-detail'),
     path('bookings/<int:booking_id>/qr/', BookingQRView.as_view(), name='booking-qr'),
     path('bookings/<int:booking_id>/cancel/', BookingCancelView.as_view(), name='booking-cancel'),
     
-    # Locker availability check
-    path('lockers/<int:locker_id>/availability/', LockerAvailabilityView.as_view(), name='locker-availability'),
+    # ==================== REVIEWS ====================
+    path('reviews/', ReviewListCreateView.as_view(), name='review-list-create'),
     
-    # Location reviews
-    path('locations/<int:location_id>/reviews/', LocationReviewsView.as_view(), name='location-reviews'),
+    # ==================== NOTIFICATIONS ====================
+    path('notifications/', NotificationListView.as_view(), name='notification-list'),
+    path('notifications/<int:notification_id>/read/', NotificationMarkReadView.as_view(), name='notification-mark-read'),
+    path('notifications/read-all/', NotificationMarkAllReadView.as_view(), name='notification-mark-all-read'),
     
-    # Discount validation
-    path('discounts/validate/', DiscountView.as_view(), name='validate_discount'),
-    
-    # Router URLs
-    path('', include(router.urls)),
+    # ==================== DISCOUNTS ====================
+    path('discounts/validate/', DiscountView.as_view(), name='discount-validate'),
 ]

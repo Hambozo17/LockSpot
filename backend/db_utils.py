@@ -72,7 +72,7 @@ class DatabaseConnection:
             cursor.execute(query, params)
             results = cursor.fetchall()
             cursor.close()
-            return results
+            return results  # type: ignore
     
     @staticmethod
     def execute_query_one(query: str, params: Tuple = ()) -> Optional[Dict]:
@@ -91,7 +91,7 @@ class DatabaseConnection:
             cursor.execute(query, params)
             row = cursor.fetchone()
             cursor.close()
-            return row
+            return row  # type: ignore
     
     @staticmethod
     def execute_insert(query: str, params: Tuple = ()) -> int:
@@ -260,7 +260,7 @@ def dict_to_update(table_name: str, data: Dict, where_clause: str, where_params:
     return query, params
 
 
-def format_datetime(dt: datetime) -> str:
+def format_datetime(dt: datetime):
     """Format datetime for SQLite"""
     return dt.strftime('%Y-%m-%d %H:%M:%S') if dt else None
 

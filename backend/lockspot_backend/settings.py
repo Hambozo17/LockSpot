@@ -202,7 +202,6 @@ WSGI_APPLICATION = 'lockspot_backend.wsgi.application'
 
 # ==================== DATABASE ====================
 
-# MySQL configuration for production
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
@@ -216,6 +215,14 @@ DATABASES = {
         },
     }
 }
+
+# SQLite configuration (for development without MySQL)
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': BASE_DIR / 'db.sqlite3',
+#     }
+# }
 
 
 # ==================== AUTH ====================

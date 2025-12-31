@@ -3,12 +3,12 @@ Raw SQL Query Functions for LockSpot API
 Replace ORM queries with raw SQL for better control and performance
 """
 
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional  # type: ignore
 from datetime import datetime, timedelta
 from django.contrib.auth.hashers import make_password, check_password
 import uuid
 
-from .db_utils import DatabaseConnection, format_datetime, parse_datetime, dict_to_insert, dict_to_update
+from .db_utils import DatabaseConnection, format_datetime, parse_datetime, dict_to_insert, dict_to_update  # type: ignore
 
 
 # ==========================================
@@ -157,7 +157,7 @@ def get_available_lockers(location_id: int, size: Optional[str] = None) -> List[
     
     if size:
         query += " AND l.size = ?"
-        params.append(size)
+        params.append(size)  # type: ignore
     
     query += " ORDER BY l.unit_number"
     return DatabaseConnection.execute_query(query, tuple(params))
@@ -197,7 +197,7 @@ def create_booking(user_id: int, locker_id: int, start_time: datetime, end_time:
     # Update locker status to Booked
     update_locker_status(locker_id, 'Booked')
     
-    return get_booking_by_id(booking_id)
+    return get_booking_by_id(booking_id)  # type: ignore
 
 
 def get_booking_by_id(booking_id: int) -> Optional[Dict]:
@@ -276,7 +276,7 @@ def get_user_bookings(user_id: int, booking_status: Optional[str] = None) -> Lis
     
     if booking_status:
         query += " AND b.status = ?"
-        params.append(booking_status)
+        params.append(booking_status)  # type: ignore
     
     query += " ORDER BY b.created_at DESC"
     return DatabaseConnection.execute_query(query, tuple(params))
@@ -442,7 +442,7 @@ def increment_discount_usage(discount_id: int):
 # REVIEW QUERIES
 # ==========================================
 
-def create_review(booking_id: int, rating: int, title: str = None, comment: str = None) -> Dict:
+def create_review(booking_id: int, rating: int, title=None, comment=None) -> Dict:
     """Create review for booking"""
     review_data = {
         'booking_id': booking_id,

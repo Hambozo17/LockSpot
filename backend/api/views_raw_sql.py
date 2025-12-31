@@ -102,7 +102,7 @@ class RegisterView(APIView):
             cursor.close()
             
             # Generate token
-            access_token = create_access_token(user)
+            access_token = create_access_token(user_id, email)
             
             return Response({
                 'user': {
@@ -160,32 +160,14 @@ class LoginView(APIView):
             
             # Verify password
             from django.contrib.auth.hashers import check_password
-            import hashlib
-            
-            password_valid = False
-            
-            # Check if it's a Django hash (starts with algorithm name)
-            if user['password'].startswith('pbkdf2_'):
-                password_valid = check_password(password, user['password'])
-            # Check if it's an MD5 hash (32 characters, lowercase hex)
-            elif len(user['password']) == 32 and all(c in '0123456789abcdef' for c in user['password']):
-                # Legacy MD5 hash
-                md5_hash = hashlib.md5(password.encode()).hexdigest()
-                password_valid = (md5_hash == user['password'])
-            # Check if it's a SHA256 hash (64 characters)
-            elif len(user['password']) == 64 and all(c in '0123456789abcdef' for c in user['password']):
-                # Legacy SHA256 hash
-                sha256_hash = hashlib.sha256(password.encode()).hexdigest()
-                password_valid = (sha256_hash == user['password'])
-            
-            if not password_valid:
+            if not check_password(password, user['password']):
                 return Response(
                     {'detail': 'Invalid credentials'},
                     status=status.HTTP_401_UNAUTHORIZED
                 )
             
             # Generate token
-            access_token = create_access_token(user)
+            access_token = create_access_token(user['id'], user['email'])
             
             return Response({
                 'user': {
@@ -380,7 +362,7 @@ class LocationDetailView(APIView):
             cursor.execute("""
                 SELECT DISTINCT
                     p.id, p.size, p.name, p.hourly_rate, p.daily_rate,
-                    p.weekly_rate, p.is_active
+                    p.weekly_rate, p.monthly_rate, p.is_active
                 FROM lockers_pricingtier p
                 JOIN lockers_lockerunit l ON l.tier_id = p.id
                 WHERE l.location_id = %s AND p.is_active = 1
@@ -427,7 +409,8 @@ class LocationDetailView(APIView):
                     'name': p['name'],
                     'hourly_rate': parse_decimal(p['hourly_rate']),
                     'daily_rate': parse_decimal(p['daily_rate']),
-                    'weekly_rate': parse_decimal(p['weekly_rate'])
+                    'weekly_rate': parse_decimal(p['weekly_rate']),
+                    'monthly_rate': parse_decimal(p['monthly_rate'])
                 })
             
             return Response(result)
@@ -444,7 +427,7 @@ class LocationPricingView(APIView):
             cursor.execute("""
                 SELECT DISTINCT
                     p.id, p.size, p.name, p.hourly_rate, p.daily_rate,
-                    p.weekly_rate, p.description
+                    p.weekly_rate, p.monthly_rate, p.description
                 FROM lockers_pricingtier p
                 JOIN lockers_lockerunit l ON l.tier_id = p.id
                 WHERE l.location_id = %s AND p.is_active = 1
@@ -463,7 +446,8 @@ class LocationPricingView(APIView):
                     'description': p['description'],
                     'hourly_rate': parse_decimal(p['hourly_rate']),
                     'daily_rate': parse_decimal(p['daily_rate']),
-                    'weekly_rate': parse_decimal(p['weekly_rate'])
+                    'weekly_rate': parse_decimal(p['weekly_rate']),
+                    'monthly_rate': parse_decimal(p['monthly_rate'])
                 })
             
             return Response({'results': results})
@@ -481,35 +465,31 @@ class LockerListView(APIView):
         size = request.query_params.get('size')
         status_filter = request.query_params.get('status', 'Available')
         
-        # Build query with conditions
-        conditions = ["1=1"]
-        params = []
-        
-        if location_id:
-            conditions.append("l.location_id = %s")
-            params.append(location_id)
-        
-        if size:
-            conditions.append("l.size = %s")
-            params.append(size)
-        
-        if status_filter:
-            conditions.append("l.status = %s")
-            params.append(status_filter)
-        
-        where_clause = " AND ".join(conditions)
-        
-        query = f"""
+        query = """
             SELECT 
                 l.id, l.unit_number, l.size, l.status,
                 l.location_id, loc.name as location_name,
-                p.hourly_rate, p.daily_rate, p.weekly_rate
+                p.hourly_rate, p.daily_rate, p.weekly_rate, p.monthly_rate
             FROM lockers_lockerunit l
             JOIN lockers_lockerlocation loc ON l.location_id = loc.id
             JOIN lockers_pricingtier p ON l.tier_id = p.id
-            WHERE {where_clause}
-            ORDER BY loc.name, l.unit_number
+            WHERE 1=1
         """
+        params = []
+        
+        if location_id:
+            query += " AND l.location_id = %s"
+            params.append(location_id)
+        
+        if size:
+            query += " AND l.size = %s"
+            params.append(size)
+        
+        if status_filter:
+            query += " AND l.status = %s"
+            params.append(status_filter)
+        
+        query += " ORDER BY loc.name, l.unit_number"
         
         with DatabaseConnection.get_connection() as conn:
             cursor = conn.cursor(dictionary=True)
@@ -531,7 +511,8 @@ class LockerListView(APIView):
                     'pricing': {
                         'hourly_rate': parse_decimal(locker['hourly_rate']),
                         'daily_rate': parse_decimal(locker['daily_rate']),
-                        'weekly_rate': parse_decimal(locker['weekly_rate'])
+                        'weekly_rate': parse_decimal(locker['weekly_rate']),
+                        'monthly_rate': parse_decimal(locker['monthly_rate'])
                     }
                 })
             
